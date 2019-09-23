@@ -1,0 +1,300 @@
+FUNCTION KW_LINE_JOIN, contours, width, $
+                      MIN_X_LENGTH = min_x_length, $
+                      MIN_Y_LENGTH = min_y_length, $
+                      LIMIT        = limit,        $
+                      GPCP         = gpcp,         $
+                      FORCE_GRID   = force_grid
+;+
+; Name:
+;    KW_LINE_JOIN
+; Purpose:
+;    A function to join points returned from CONTOUR if they
+;    with in a given distance from each other. This program is
+;    developed in to simulate what the line joining algorithm
+;    from Berry and Reeder (2014). However, due to little
+;    explanation in that paper about exactly how their algorithm
+;    works, this code does not claim to work exactly the same.
+;    This function assumes data is in degrees of lon/lat for x/y. 
+; Inputs:
+;    cnt_out   : The output from CONTOUR returned to the PATH_XY
+;                 keyword. This should be a 2-D array with
+;                 row zero (0) corresponding to x-values and
+;                 row one  (1) corresponding to y-values.
+;   width      : Width to check around x and y values.
+; Outputs:
+;    A structure containing the points for the joined contour
+;    lines under separate tag names for each separate line.
+; Keywords:
+;   MIN_X_LENGTH : An optional keyword that is set to the minimum
+;                   distance a line must stretch in the x-direction
+;                   for it to be returned in the output data.
+;   MIN_Y_LENGTH : An optional keyword that is set to the minimum
+;                   distance a line must stretch in the y-direction
+;                   for it to be returned in the output data.
+;   LIMIT        : Set to [south, west, north, east] domain limits.
+;   GPCP         : Set to interpolate to GPCP grid. Default is to
+;                   interpolate to TMI grid.
+; Author and History:
+;    Kyle R. Wodzicki 03 Oct.  2014
+;
+;     MODIFIED 06 Oct. 2014
+;       Majority of code written.
+;     MODIFIED 10 Oct. 2014:
+;       Changed code so that the maximum of a line is checked to be
+;       within in a range less than the minimum of reference line
+;       and the minimum of a line be checked within a range 
+;       greater than the maximum of a reference line. This was done
+;       to reduce the creation of triangles in joined lines. 
+;       Also modified so that lines that are used are correctly
+;       appended to the `already_used' array, as well as checking
+;       to make sure there is only on maximum longitude and one
+;       minimum longitude for each line being joined. This was
+;       added to reduce artifacts from the line joining.
+;     MODIFIED 14 Oct. 2014:
+;       Finished refining the interpolation between points in lines
+;       part of the code. Interpolates to same longitudes as found in
+;       TMI data. Renamed to V3 so as to not break the code.
+;       V2 is last working.
+;       Moved to replace orginal version
+;     MODIFIED 16 Oct. 2014:
+;       Added a LIMIT keyword to restrict the domain of contours
+;       returned. This keyword gets fed into PATH_XY_2_LINES.
+;     MODIFIED 19 Nov. 2014 by Kyle R. Wodzicki
+;       Added GPCP keyword for interpolation of lines to GPCP grid.
+;       Default is to use TMI grid
+;     MODIFIED 19 Jan. 2016 by Kyle R. Wodzicki
+;       Add the FORCE_GRID, which forces the ITCZ identification to 
+;       the grid box closest to the location identified by
+;       the Berry and Reeder (2014) method.
+;-
+
+COMPILE_OPT IDL2                                                      ;Set compile options
+
+IF (N_PARAMS() NE 2) THEN MESSAGE, 'Incorrect number of inputs!'      ;Check number of inputs
+
+width2  = width * 18                                                  ;width 2, for longitude, is ten times that of original width
+
+;IF ~KEYWORD_SET(gpcp) THEN ref_lon = 0.25*(FINDGEN(1440)+1)-0.125 $   ;TMI longitude as reference
+;                      ELSE ref_lon = 2.50*FINDGEN(144) + 1.25         ;GPCP longitude as reference
+
+ref_lon = KEYWORD_SET(gpcp) ? 2.50*FINDGEN(144) + 1.25 : 0.25*(FINDGEN(1440)+1)-0.125
+
+IF KEYWORD_SET(force_grid) THEN $
+  ref_lat = KEYWORD_SET(gpcp) ? -2.5  *  FINDGEN(72)     + 88.75 $
+                              :  0.25 * (FINDGEN(320)+1) - 40.125
+
+already_used = -1                                                     ;Array of the contour lines already joined
+joined_lines = {}
+
+line_num = 1
+FOR i = 0, N_TAGS(contours)-1 DO BEGIN                                ;Iterate over tags to get starting line
+  id = WHERE(i EQ already_used, CNT)                                  ;Check to see if given contour line was used already
+  IF CNT NE 0 THEN CONTINUE                                           ;If used, jump to next contour line
+  
+  temp_x_I = contours.(i).X_VALUES                                      ;Store x/y values of line that has not been used
+  temp_y_I = contours.(i).Y_VALUES
+  
+  max_x  = WHERE(MAX(temp_x_I) EQ temp_x_I, max_cnt)
+  min_x  = WHERE(MIN(temp_x_I) EQ temp_x_I, min_cnt)
+  IF max_CNT NE 1 OR min_CNT NE 1 THEN BEGIN                          ;If either has more than on index, do NOT use this contour
+    already_used = [already_used, i]
+    CONTINUE
+  ENDIF
+  
+  FOR j = 0, N_TAGS(contours)-1 DO BEGIN                              ;Iterate over tags again to find lines to join with current line
+    id = WHERE(j EQ already_used, CNT)                                ;Check to see if given contour line was used already
+    IF j EQ i OR CNT NE 0 THEN CONTINUE                               ;Skip line checking against or if line already used
+    
+    temp_x_J = contours.(j).X_VALUES
+    temp_y_J = contours.(j).Y_VALUES
+    
+;    IF (N_ELEMENTS(temp_x_J) LT 3) THEN BEGIN                         ;Line must have AT LEAST 3 points in it
+;      already_used = [already_used, j]
+;      CONTINUE
+;    ENDIF
+    
+    max_x_J = WHERE(MAX(temp_x_J) EQ temp_x_J, max_CNT)                ;Find maximum x value in jth contour
+    min_x_J = WHERE(MIN(temp_x_J) EQ temp_x_J, min_CNT)                ;Find minimum x value in jth contour    
+
+    IF max_CNT NE 1 OR min_CNT NE 1 THEN BEGIN                        ;If either has more than on index, do NOT use this contour
+      already_used = [already_used, j]
+      CONTINUE
+    ENDIF
+
+    max_x_I  = WHERE(MAX(temp_x_I) EQ temp_x_I)                       ;Find the maximum x value for the temp contour array
+    min_x_I  = WHERE(MIN(temp_x_I) EQ temp_x_I)                       ;Find the minimum x value for the temp contour array
+    
+    ;=== Check if to prepend (i.e., Front) ===;
+    id_F = temp_x_I[min_x_I]         GT temp_x_J[max_x_J] AND $       ;Check if min of temp is east of max of jth contour
+           temp_x_I[min_x_I]-width*2 LE temp_x_J[max_x_J] AND $
+           temp_y_I[min_x_I]+width   GE temp_y_J[max_x_J] AND $       ; and check latitude is in range
+           temp_y_I[min_x_I]-width   LE temp_y_J[max_x_J]
+    ;=== Check if to append (i.e., Back) ===;
+    id_B = temp_x_I[max_x_I]+width*2 GE temp_x_J[min_x_J] AND $       ;Check if max of temp is west of min of jth contour
+           temp_x_I[max_x_I]         LT temp_x_J[min_x_J] AND $
+           temp_y_I[max_x_I]+width   GE temp_y_J[min_x_J] AND $       ; and check latitude is in range
+           temp_y_I[max_x_I]-width   LE temp_y_J[min_x_J]
+    IF id_F EQ 1 THEN BEGIN
+        temp_x_I       = [temp_x_J, temp_x_I]                         ;Append x values to temp contour
+        temp_y_I       = [temp_y_J, temp_y_I]
+        already_used = [already_used, j]
+    ENDIF ELSE IF id_B EQ 1 THEN BEGIN                                ;If found lines to join not at similar longitudes
+        temp_x_I     = [temp_x_I, temp_x_J]                           ;Append x values to temp contour
+        temp_y_I     = [temp_y_I, temp_y_J]
+        already_used = [already_used, j]
+    ENDIF
+  ENDFOR                                                              ;END j
+
+  already_used = [already_used, i]                                    ;Add ith contour line to used list
+  
+  IF KEYWORD_SET(min_x_length) THEN BEGIN                             ;Before adding line, check if long enough
+		x_range = MAX(temp_x_I)-MIN(temp_x_I)
+		IF (x_range LT min_x_length/2.0) THEN CONTINUE                        ;Skip adding to array, reset tmp_line arrays
+	ENDIF
+	IF KEYWORD_SET(min_y_length) THEN BEGIN                             ;Before adding line, check if long enough
+		y_range = MAX(temp_y_I)-MIN(temp_y_I)
+		IF (y_range LT min_y_length/2.0) THEN CONTINUE                        ;Skip adding to array, reset tmp_line arrays
+	ENDIF
+	
+IF (N_ELEMENTS(temp_x_I) LT 2) THEN CONTINUE                          ;Must be at least 2 points in contour
+;=====================================================================
+; REGRESSION TO DETERMINE IF MOVING NORTH/SOUTH TOO FAST             
+  b = REGRESS(temp_x_I, temp_y_I, CORRELATION=r)
+ ; PRINT, b, r
+  IF (ABS(b[0]) GT 0.55) THEN CONTINUE
+
+  tag_name = (line_num LT 10) ? 'LINE_0'+STRTRIM(line_num,2) $        ;Create the tag anme
+															: 'LINE_' +STRTRIM(line_num,2)
+	joined_lines = CREATE_STRUCT(joined_lines, tag_name, $              ;Add line to joined line structure.
+															 {X_VALUES : temp_x_I, $
+															  Y_VALUES : temp_y_I})
+	line_num++                                                          ;Increment joined contour line counter
+ENDFOR                                                                ;END i
+
+;=====================================================================
+; Sort the structured data based on the first x value
+sort_x = []
+FOR i = 0, N_TAGS(joined_lines)-1 DO BEGIN
+  sort_x = [sort_x, joined_lines.(i).X_VALUES[0]]
+ENDFOR
+sort_x = SORT(sort_x)
+new_join = {}
+
+FOR i = 0, N_ELEMENTS(sort_x)-1 DO BEGIN
+  tag_name = (i LT 10) ? 'LINE_0'+STRTRIM(i,2) : 'LINE_' +STRTRIM(i,2)
+  new_join = CREATE_STRUCT(new_join, tag_name, joined_lines.(sort_x[i]))
+ENDFOR
+
+;=== Sort by latitude
+;sort_y = []
+;FOR i = 0, N_TAGS(joined_lines)-1 DO BEGIN
+;  sort_y = [sort_y, MEAN(joined_lines.(i).Y_VALUES[0])]
+;ENDFOR
+;sort_y = SORT(sort_y)
+;new_join = {}
+;
+;FOR i = 0, N_ELEMENTS(sort_y)-1 DO BEGIN
+;  tag_name = (i LT 10) ? 'LINE_0'+STRTRIM(i,2) : 'LINE_' +STRTRIM(i,2)
+;  new_join = CREATE_STRUCT(new_join, tag_name, joined_lines.(sort_x[i]))
+;ENDFOR
+
+joined_lines = new_join
+
+;=====================================================================
+;=====================================================================
+; FURTHER JOIN BASED ONLY ON LONGITUDE.
+;
+already_used = -1                                                     ;Reset already used array
+line_num = 1                                                          ;Reset line number count
+new_join = {}                                                         ;New structure to store further joined lines
+
+FOR i = 0, N_TAGS(joined_lines)-1 DO BEGIN                            ;Iterate over newly joined lines
+  id = WHERE(i EQ already_used, CNT)                                  ;If line already used, skip it
+  IF CNT NE 0 THEN CONTINUE
+  
+  temp_x_I = joined_lines.(i).X_VALUES                                  ;Store x-values of current line in temporary variable
+  temp_y_I = joined_lines.(i).Y_VALUES                                  ;Store y-values of current line in temporary variable
+
+  FOR j = 0, N_TAGS(joined_lines)-1 DO BEGIN                          ;Iterate over structure again to find lines to join.
+    id = WHERE(j EQ already_used, CNT)                                ;Check to see if given contour line was used already
+    IF j EQ i OR CNT NE 0 THEN CONTINUE                               ;Skip line checking against or if line already used
+    
+    temp_x_J = joined_lines.(j).X_VALUES
+    temp_y_J = joined_lines.(j).Y_VALUES
+    
+    WHERE_MATCH, temp_x_I, temp_x_J, tmp_id, x_id                     ;Determine if the lines share x-values.
+    IF (tmp_id NE !NULL) THEN CONTINUE                                ;If they share x-values, just skip, do NOT add to already_used array
+
+    max_x_I = WHERE(MAX(temp_x_I) EQ temp_x_I)                        ;Find the maximum x value for the temp contour array
+    min_x_I = WHERE(MIN(temp_x_I) EQ temp_x_I)                        ;Find the minimum x value for the temp contour array
+    max_x_J = WHERE(MAX(temp_x_J) EQ temp_x_J)                        ;Find maximum x value in jth contour
+    min_x_J = WHERE(MIN(temp_x_J) EQ temp_x_J)                        ;Find minimum x value in jth contour  
+    
+    ;=== Check if to prepend (i.e., Front) ===;
+		id_F = temp_x_I[min_x_I]         GT temp_x_J[max_x_J] AND $      ;Check if min of temp is east of max of jth contour
+			     temp_x_I[min_x_I]-width2  LE temp_x_J[max_x_J] AND $
+			     temp_y_I[min_x_I]+width*2 GE temp_y_J[max_x_J] AND $      ; and check latitude is in range
+	         temp_y_I[min_x_I]-width*2 LE temp_y_J[max_x_J]
+    ;=== Check if to append (i.e., Back) ===;
+    id_B = temp_x_I[max_x_I]         LT temp_x_J[min_x_J] AND $      ;Check if max of temp is west of min of jth contour
+			     temp_x_I[max_x_I]+width2  GE temp_x_J[min_x_J] AND $
+			     temp_y_I[max_x_I]+width*2 GE temp_y_J[min_x_J] AND $      ; and check latitude is in range
+			     temp_y_I[max_x_I]-width*2 LE temp_y_J[min_x_J]
+		
+		IF id_F EQ 1 THEN BEGIN
+			temp_x_I     = [temp_x_J, temp_x_I]                             ;prepend x values to temp contour
+			temp_y_I     = [temp_y_J, temp_y_I]
+			already_used = [already_used, j]
+		ENDIF
+		IF id_B EQ 1 THEN BEGIN                                ;If found lines to join not at similar longitudes
+			temp_x_I     = [temp_x_I, temp_x_J]                             ;Append x values to temp contour
+			temp_y_I     = [temp_y_I, temp_y_J]
+			already_used = [already_used, j]
+		ENDIF
+  ENDFOR                                                              ;END j
+    
+  already_used = [already_used, i]                                    ;Add ith contour line to used list
+
+  IF KEYWORD_SET(min_x_length) THEN BEGIN                             ;Before adding line, check if long enough
+		x_range = MAX(temp_x_I)-MIN(temp_x_I)
+		IF (x_range LT min_x_length * 2) THEN CONTINUE                    ;Skip adding to array, reset tmp_line arrays
+	ENDIF
+	IF KEYWORD_SET(min_y_length) THEN BEGIN                             ;Before adding line, check if long enough
+		y_range = MAX(temp_y_I)-MIN(temp_y_I)
+		IF (y_range LT min_y_length * 2) THEN CONTINUE                    ;Skip adding to array, reset tmp_line arrays
+	ENDIF
+
+;===================================================================== 
+;  USE INTERPOL AND INTERPOLATE
+  id = WHERE(ref_lon GE MIN(temp_x_I) AND ref_lon LE MAX(temp_x_I), CNT)  ;Find indices to interpolate to in range
+  
+  IF CNT NE 0 THEN tmp_lon = ref_lon[id] $                            ;Create temporary filterd lon for line
+  ELSE BEGIN
+    MESSAGE, 'Longitude values for current ITCZ location are not '+ $ ;Else, message and skip to next line
+             'within the reference longitude. This ITCZ location '+ $
+             'is being skipped!', /CONTINUE
+    CONTINUE
+  ENDELSE
+  
+  n_temp_x_I = N_ELEMENTS(temp_x_I)                                   ;Number of elements in array
+  x_int = INTERPOL(FINDGEN(n_temp_x_I), temp_x_I, DOUBLE(tmp_lon))    ;Determine array indices for INTERPOLATE
+  temp_y_I = INTERPOLATE(temp_y_I, x_int, /DOUBLE)                    ;Interpolate y-values
+  
+  IF KEYWORD_SET(force_grid) THEN BEGIN                                ; Added a nearest neighbor check
+    FOR l = 0, N_ELEMENTS(temp_y_I)-1 DO BEGIN
+      min_val = MIN(temp_y_I[l]-ref_lat, min_id, /ABSOLUTE)
+      temp_y_I[l] = ref_lat[min_id]
+    ENDFOR
+  ENDIF
+  tag_name = (line_num LT 10) ? '0'+STRTRIM(line_num,2) $
+                              :     STRTRIM(line_num,2)
+	tag_name = 'LINE_'+tag_name
+	;Add line to joined line structure.
+	new_join = CREATE_STRUCT(new_join, tag_name, $
+															 {X_VALUES : FLOAT(tmp_lon), $                 ;Use exact x values from reference longitude
+															  Y_VALUES : FLOAT(temp_y_I)})
+	line_num++
+ENDFOR                                                                ;END i
+
+RETURN, new_join
+END

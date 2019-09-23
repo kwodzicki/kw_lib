@@ -1,0 +1,44 @@
+FUNCTION KW_HIST_2D, in1, in2, $
+  MIN1 = min1in, MAX1 = max1in, BIN1 = bin1in, $
+  MIN2 = min2in, MAX2 = max2in, BIN2 = bin2in
+;+
+; Name:
+;   KW_HIST_2D
+; Purpose:
+;   A function to compute 2D histograms
+; Inputs:
+;   in1 : input values for variable 1 in histogram
+;   in2 : input values for variable 2 in histogram 
+; Outputs:
+;   An array.
+; Keywords:
+;
+; Author and History:
+;   Kyle R. Wodzicki     Created 19 Oct. 2016
+;-
+COMPILE_OPT IDL2
+
+    ;Find extents of arrays.
+    in1max = MAX(in1, MIN=in1min)
+    in2max = MAX(in2, MIN=in2min)
+
+    ;Supply default values for keywords.
+    min1 = (N_ELEMENTS(min1in) gt 0) ? min1in : (0 < in1min)
+    max1 = (N_ELEMENTS(max1in) gt 0) ? max1in : in1max
+    min2 = (N_ELEMENTS(min2in) gt 0) ? min2in : (0 < in2min)
+    max2 = (N_ELEMENTS(max2in) gt 0) ? max2in : in2max
+    b1 = (N_ELEMENTS(b1in) gt 0) ? b1in : 1L
+    b2 = (N_ELEMENTS(b2in) gt 0) ? b2in : 1L
+
+    ;Get # of bins for each
+    in1bins = FLOOR((max1-min1) / b1) + 1L
+    in2bins = FLOOR((max2-min2) / b2) + 1L
+
+		hist_out = LONARR(in1bins, in2bins)
+		hist1 = KW_HISTOGRAM(in1, MIN=min1, MAX=max1, BINSIZE=bin1, REVERSE_INDICES = ri1)
+    FOR i = 1, N_ELEMENTS(hist1)-1
+
+
+
+
+END

@@ -1,0 +1,355 @@
+PRO KW_CONTOUR, z, x, y, $
+      INTERVAL     = interval,     $
+      CONTOURS     = contours,     $
+      CBFORMAT     = cbFormat,     $
+      RGB_COLORS   = rgb_colors,   $ 
+      CBCONTOURS   = cbContours,   $
+      COLOR_TABLE  = color_table,  $
+      BOTTOM       = bottom,       $
+      CTREVERSE    = ctReverse,    $
+      COLORBAR     = colorbar,     $
+      CBPOS        = cbPos,        $
+      CBTITLE      = cbTitle,      $
+      CBVERTICAL   = cbVertical,   $
+      CBRIGHT      = cbRight,      $
+      MAP_ON       = map_on,       $
+      MAPLIMIT     = maplimit,     $
+      LONGITUDE    = longitude,    $
+      LONDEL       = lonDel,       $
+      LATDEL       = latDel,       $
+      LATLABEL     = latLabel,     $
+      LONLABEL     = lonLabel,     $
+      ADVANCE      = advance,      $
+      WIND         = wind,         $
+      CHARSIZE     = charsize,     $
+      BOX_AXES     = box_axes,     $
+      MISSINGVALUE = missingvalue, $
+      OOB_HIGH     = oob_high,     $
+      OOB_LOW      = oob_low,      $
+      TITLE        = title,        $
+      USA          = usa,          $
+      MAP_OBJ      = map_obj,      $
+      MAP_FILL     = map_fill,     $
+      COUNTRIES    = countries,    $
+      PROJECTION   = projection,   $
+      LABEL_AXES   = label_axes,   $
+      POSITION     = position,     $
+      CT_File      = ct_file,      $
+      _EXTRA       = extra
+; Name:
+;   KW_CONTOUR
+; Purpose:
+;   To call the CGContour and CGColor bar plotting routines without
+;   having to define everything all the time.
+; Calling sequence:
+;   PF_CGCONTOUR, z, x, y
+; Input:
+;   z  : Data to be contoured
+;   x  : Values of `x' axis
+;   y  : Values of `y' axis
+; Outputs:
+;   A direct graphics contour plot
+; Keywords:
+;   IRREG        : Set for irregular data
+;   OVERPLOT     : Use to overplot data
+;   INTERVAL     : Contouring interval to use; default is ten (10)
+;   CONTOURS     : Array containing the values of contours
+;   CBCONTOURS   : Colorbar contours; MUST BE STRING
+;   COLOR_TABLE  : Set to color table desired; Default is 33
+;   BOTTOM       : Bottom index of the color table to use
+;   CTREVERSE    : Reverse the color table
+;   FILL         : Set to fill in contours
+;   CELL_FILL    : Use when overplotting on map
+;   COLORBAR     : Set if a color bar is to be added to plot
+;   CBPOS        : Color bar position
+;   CBTITLE      : Title of the colorbar
+;   CBVERTICAL   : To make colorbar vertical
+;   CBRIGHT      : Place labels on right side of vertical colorbar
+;   MAP_ON       : Set to plot data over map; default is yes
+;   MAPLIMIT     : Domain of map; default is 
+;                    [-90.0, -180.0, 90.0, 180.0]
+;   MAP_FILL     : Set to color to fill continents.
+;   LONDEL       : This is the interval for longitude lines.
+;                    Default is 30.0 (set in GLOBAL_MAP)
+;   LATDEL       : This is the interval for latitude lines.
+;                    Default is 15.0 (set in GLOBAL_MAP)
+;   LATLABEL     : Longitude at which latitude labels are to be drawn.
+;   LONLABEL     : Latitude at which longitude labels are to be drawn.
+;   ADVANCE      : Will advance for map settings
+;   WIND         : Set up the window size. If 3-elements:
+;                    0) Window index, 1) XSIZE, 2) YSIZE.
+;                    If 2-elements, 0) XSIZE, 1) YSIZE
+;   CHARSIZE     : Size of contours on plot
+;   BOX_AXES     : Plot lat/lon labels around plot
+;   XTITLE       : Title of the x-axis
+;   YTITLE       : Title of the y-axis
+;   XRANGE       : Range of x Axis values
+;   YRANGE       : Range of y Axis vaules
+;   XTICKUNITS   : Units for x axis
+;   YTICKUNITS   : Units for y axis
+;   XTHICK       : Thickness of x annotations
+;   YTHICK       : Thickness of y annotations
+;   XMARGIN      : X-margin for the plots
+;   YMARGIN      : Y-margin for the plots
+;   POSITION     : Position of the plot
+;   NOERASE      : 
+;   MISSINGVALUE : Missing value in data
+;   CELL_FILL    : Fill the grid box
+;   TITLE        : Set title of a plot
+; Author and history:
+;   Kyle Wodzicki		Created 11 June 2014
+;
+;     MODIFIED 24 June 2014: 
+;       Added OVERPLOT keyword and added NaN keyword to MIN and MAX
+;       in color bar section.
+;     MODIFIED 25 June 2014:
+;       Cleaned up contour and interval keyword checks. If contours is
+;       set, then the interval is set based off the contours.
+;       If contours is set, and no interval was set, will default.
+;       Lastly, if contours not set and interval set, will maintain
+;       set interval.
+;       ALSO added CHARSIZE to GLOBAL_MAP call.
+;       ALSO added lat/lonLabel to keywords for use in GLOBAL_MAP.
+;     MODIFIED 01 July 2014:
+;       If MAPLIMIT is not set, the map domain is determine based on
+;       the MIN and MAX values of the input Latitude and Longitude.
+;       Add cgLayout to determine plot position if not entered via
+;       keyword. Added handling of color bar position based on the
+;       plot position. Modified default color bar position to handle
+;       horizontal and vertical color bars.
+;     MODIFIED 08 July 2014:
+;       Added XRANGE & YRANGE keywords.
+;     MODIFIED 16 July 2014:
+;       Changed WIND keyword to include window index.
+;     MODIFIED 26 July 2014:
+;       Added x and y title keywords
+;     MODIFIED 28 July 2014:
+;       Changed procedure name from PF_CGCONTOUR to KW_CONTOUR.
+;     MODIFIED 30 July 2014:
+;       Added, x/y tick units keywords and BOTTOM 
+;     MODIFIED 16 Sep. 2014:
+;       Changed how color bar contours are generated.
+;     MODIFIED 24 Oct. 2014:
+;       Added ZVALUE keyword.
+;     MODIFIED 28 Oct. 2014:
+;       Implimented use of KW_COLORBAR in lue of cgCOLORBAR.
+;       Call to cgCOLORBAR has simply been commented out.
+;       Actually, changed by to CG because of difficulty.
+;     MODIFIED 13 Nov. 2014 by K.R.W.
+;       Added OOB_HIGH and OOB_LOW keywords to contour points 
+;       over or under the maximum and minimum contours as the 
+;       maximum or minimum color.
+;     MODIFIED 19 Nov. 2014:
+;       Added USA keyword.
+;     MODIFIED 03 Mar. 2015
+;       Added MAP_OBJ Keyword
+;     MODIFIED 04 Mar. 2015 K.R.W
+;       Added COUNTRIES keyword
+;-
+
+COMPILE_OPT IDL2
+
+IF (N_ELEMENTS(cbFormat) EQ 0) THEN cbFormat = "(F8.2)"
+IF ~KEYWORD_SET(bottom) THEN bottom=0                                 ;Set default bottom value
+cbTitle = (N_ELEMENTS(cbTitle) NE 0) ? '!3'+cbTitle : '!3'
+
+IF (N_ELEMENTS(contours) NE 0) THEN BEGIN                             ;Check contours key set
+  interval = N_ELEMENTS(contours)-1                                   ;If set, define interval
+  
+  IF (N_ELEMENTS(cbContours) EQ 0) THEN BEGIN                         ;Set color bar contours
+    cbContours_New = (SIZE(contours, /TYPE) LT 4) ? $
+        STRTRIM(contours,2) : STRING(contours, FORMAT=cbFormat)
+	ENDIF ELSE cbContours_New = cbContours
+	
+	IF KEYWORD_SET(oob_low) THEN BEGIN
+		id = WHERE(z LE MIN(contours), COUNT)                             ;Find where data over contour range											
+		IF (COUNT NE 0) THEN BEGIN
+			z[id]         = MIN(contours)+0.001
+			cbContours_New[0] = cbContours_New[0]+'!E-!N'
+		ENDIF
+	ENDIF
+	
+	IF KEYWORD_SET(oob_high) THEN BEGIN
+		id = WHERE(z GE MAX(contours), COUNT)                             ;Find where data over contour range											
+		IF (COUNT NE 0) THEN BEGIN
+			z[id]         = MAX(contours)-0.001
+			cbContours_New[-1]= cbContours_New[-1]+'!E+!N'
+		ENDIF
+	ENDIF
+ENDIF
+
+IF (N_ELEMENTS(position) EQ 0) THEN $                                      ;If position not set; DEFAULT
+  position = cgLayout([1,1], OYMARGIN=[7,3], OXMARGIN=[7,7])
+
+IF ~KEYWORD_SET(interval) THEN interval = 10                          ;Set default interval
+IF ~KEYWORD_SET(title)    THEN title    = ' '                         ;Default plot name
+
+IF KEYWORD_SET(wind) THEN BEGIN                                       ;Set window if set	
+  IF (N_ELEMENTS(wind) EQ 2) THEN $
+    WINDOW,XSIZE=wind[0],YSIZE=wind[1]
+  IF (N_ELEMENTS(wind) EQ 3) THEN $
+    WINDOW,wind[0],XSIZE=wind[1],YSIZE=wind[2]
+ENDIF
+
+IF KEYWORD_SET(map_on) THEN BEGIN
+  overplot = 1                                                        ;Overplot Must be set if plotting on map		
+  IF ~KEYWORD_SET(mapLimit) THEN $
+    mapLimit = [MIN(y), MIN(x), MAX(y), MAX(x)]                       ;Default domain based on lat/lon inputs
+  GLOBAL_MAP, LONGITUDE  = longitude,  $
+              MAPLIMIT   = mapLimit,   $
+              TITLE      = title,      $
+              POSITION   = position,   $
+              ADVANCE    = advance,    $
+              BOX_AXES   = box_axes,   $
+              CHARSIZE   = charsize,   $
+              PROJECTION = projection, $
+              /MAPSET
+ENDIF
+
+; Remove missing data if key set
+IF (N_ELEMENTS(missingvalue) NE 0) THEN BEGIN
+  miss_id = WHERE(z EQ missingvalue, miss_CNT)
+  IF (miss_CNT NE 0) THEN z[miss_id] = !VALUES.F_NaN
+ENDIF
+
+IF (N_ELEMENTS(rgb_colors) EQ 0) THEN BEGIN
+	IF (color_table EQ !NULL) THEN color_table = 33
+	cgLoadCT, color_table, NCOLORS=interval, BOTTOM=bottom, $
+		REVERSE=ctReverse, FILENAME = ct_File, /SILENT
+  c_colors = INDGEN(interval)+bottom
+ENDIF ELSE BEGIN
+c_colors =      ((0 > LONG(rgb_colors[*,0])) < 255) + $                 ;Convert RGB to 24-bit color
+           256*(((0 > LONG(rgb_colors[*,1])) < 255) + $
+           256* ((0 > LONG(rgb_colors[*,2])) < 255))
+ENDELSE
+
+IF (N_ELEMENTS(charsize) EQ 0) THEN Charsize = 1
+;c_colors = BYTSCL(c_colors, TOP=(interval-1) < (255-bottom))+bottom
+;====================================================================
+; CALL TO cgCONTOUR
+
+cgCONTOUR, z, x, y, $
+  C_COLORS = c_colors, $
+  NLEVELS  = interval, $
+  LEVELS   = contours, $
+  CHARSIZE = charsize, $
+  TITLE    = title,    $
+  OVERPLOT = overplot, $
+  POSITION = position, $
+  _EXTRA   = extra
+ 
+;=== Call to CONTOUR
+;TVLCT, rr, gg, bb, /GET
+;c_colors = COLOR_24(rr[c_colors], gg[c_colors], bb[c_colors])
+;print, c_colors
+;CONTOUR, z, x, y, $
+;  C_COLORS = c_colors,  $
+;  NLEVELS  = interval,  $
+;  LEVELS   = contours,  $
+;  CHARSIZE = charsize,  $
+;  _EXTRA    = extra
+
+IF KEYWORD_SET(map_on) THEN BEGIN                                     ;If map is on, overplot lat/lon and continents
+  GLOBAL_MAP, MAPLIMIT  = maplimit,  $
+    LONDEL     = lonDel,     $
+    LATDEL     = latDel,     $
+    LATLABEL   = latLabel,   $
+    LONLABEL   = lonLabel,   $
+    CHARSIZE   = charsize,   $
+    BOX_AXES   = box_axes,   $
+    LABEL_AXES = label_axes, $
+    USA        = usa,        $
+    COUNTRIES  = countries,  $
+    MAP_FILL   = map_fill,   $
+    /OVERPLOT
+ENDIF
+
+; Using KW_COLORBAR
+;IF ~KEYWORD_SET(cbPos) THEN BEGIN                                     ;If a color bar is desired
+;  IF KEYWORD_SET(cbVertical) THEN BEGIN                               ;If vertical color bar
+;    off1 = KEYWORD_SET(box_axes) ? 0.05 : 0.03                        ;Set x offsets for vertical color bar
+;    off2 = KEYWORD_SET(box_axes) ? 0.07 : 0.05
+;    cbPos = [position[2]+off1, position[1], $
+;             position[2]+off2, position[3]]
+;  ENDIF ELSE BEGIN
+;    off1 = KEYWORD_SET(box_axes) ? 0.05 : 0.01                        ;Set y offsets for horizontal colorbar
+;    off2 = KEYWORD_SET(box_axes) ? 0.07 : 0.03
+;    cbPos= [position[0], position[1]-off2, $                          ;Set default position horizontal color bar
+;            position[2], position[1]-off1]		
+;  ENDELSE
+;ENDIF
+;
+;
+;IF KEYWORD_SET(colorbar) THEN BEGIN
+;  IF ~KEYWORD_SET(cbContours_New) THEN BEGIN                              ;If contours not set, use min/max of data
+;    kw_COLORBAR, interval, bottom, $
+;                Range     = MinMax(z),  $
+;                Position  = cbPos,      $
+;                TITLE     = cbTitle,    $
+;                VERTICAL  = cbVertical, $
+;                RIGHT     = cbRight,    $
+;                CHARSIZE  = charsize
+;  ENDIF ElSE BEGIN
+;    kw_COLORBAR, interval, bottom, $
+;                TICKNAMES = cbContours_New,               $
+;                Position  = cbPos,                    $
+;                TITLE     = cbTitle,                  $
+;                VERTICAL  = cbVertical,               $
+;                RIGHT     = cbRight,                  $
+;                CHARSIZE  = charsize
+;  ENDELSE
+;ENDIF
+
+;Using cgCOLORBAR
+IF (N_ELEMENTS(cbPos) EQ 0) THEN BEGIN                                          ;If a color bar is desired
+  xChar = FLOAT(!D.X_CH_SIZE) / !D.X_VSIZE
+  yChar = FLOAT(!D.Y_CH_SIZE) / !D.Y_VSIZE
+  IF KEYWORD_SET(cbVertical) THEN BEGIN                                         ;If vertical color bar
+    IF KEYWORD_SET(map_on) THEN $
+      off1 = KEYWORD_SET(box_axes) ? 2.2*xChar : 0.5*xChar $                    ;Set x offsets for vertical color bar
+    ELSE $
+      off1 = 2*xChar
+    off2 = off1 + xChar*0.75
+    cbPos= [position[1], position[2]+off1, $                                    ;Set default position vertical color bar
+            position[3], position[2]+off2]	
+  ENDIF ELSE BEGIN
+    IF KEYWORD_SET(map_on) THEN $
+      off1 = KEYWORD_SET(box_axes) ? 1.5*yChar : 0.5*yChar $                    ;Set x offsets for vertical color bar
+    ELSE $
+      off1 = 3*yChar
+    off2 = off1 + yChar*0.5
+    cbPos= [position[0], position[1]-off2, $                                    ;Set default position horizontal color bar
+            position[2], position[1]-off1]		
+  ENDELSE
+ENDIF
+
+;cbCOntours='this is a test'
+IF KEYWORD_SET(colorbar) THEN BEGIN
+  IF ~KEYWORD_SET(cbContours_New) THEN BEGIN                              ;If contours not set, use min/max of data
+    cgColorbar, Range     = MinMax(z),  $
+                DISCRETE  = discrete,   $
+                NColors   = interval,   $
+                Bottom    = bottom,     $
+                DIVISIONS = interval,   $
+                Position  = cbPos,      $
+                TITLE     = cbTitle,    $
+                VERTICAL  = cbVertical, $
+                RIGHT     = cbRight,    $
+                CHARSIZE  = charsize,   $
+                PALETTE   = rgb_colors
+  ENDIF ElSE BEGIN
+    cgColorbar, TICKNAMES = cbContours_New, $
+                DISCRETE  = discrete,       $
+                NColors   = interval,       $
+                Bottom    = bottom,         $
+                DIVISIONS = interval,       $
+                Position  = cbPos,          $
+                TITLE     = cbTitle,        $
+                VERTICAL  = cbVertical,     $
+                RIGHT     = cbRight,        $
+                CHARSIZE  = charsize,       $
+                PALETTE   = rgb_colors
+  ENDELSE
+ENDIF
+
+END

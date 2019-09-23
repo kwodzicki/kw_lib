@@ -1,0 +1,275 @@
+FUNCTION KW_LINE_JOIN_V3, contours, width, $
+                      MIN_X_LENGTH = min_x_length, $
+                      MIN_Y_LENGTH = min_y_length, $
+                      LIMIT        = limit
+;+
+; Name:
+;    KW_LINE_JOIN
+; Purpose:
+;    A function to join points returned from CONTOUR if they
+;    with in a given distance from each other. This program is
+;    developed in to simulate what the line joining algorithm
+;    from Berry and Reeder (2014). However, due to little
+;    explanation in that paper about exactly how their algorithm
+;    works, this code does not claim to work exactly the same.
+;    This function assumes data is in degrees of lon/lat for x/y. 
+; Inputs:
+;    cnt_out   : The output from CONTOUR returned to the PATH_XY
+;                 keyword. This should be a 2-D array with
+;                 row zero (0) corresponding to x-values and
+;                 row one  (1) corresponding to y-values.
+;   width      : Width to check around x and y values.
+; Outputs:
+;    A structure containing the points for the joined contour
+;    lines under separate tag names for each separate line.
+; Keywords:
+;   MIN_X_LENGTH : An optional keyword that is set to the minimum
+;                   distance a line must stretch in the x-direction
+;                   for it to be returned in the output data.
+;   MIN_Y_LENGTH : An optional keyword that is set to the minimum
+;                   distance a line must stretch in the y-direction
+;                   for it to be returned in the output data.
+;   LIMIT        : Set to [south, west, north, east] domain limits.
+; Author and History:
+;    Kyle R. Wodzicki 03 Oct.  2014
+;
+;     MODIFIED 06 Oct. 2014
+;       Majority of code written.
+;     MODIFIED 10 Oct. 2014:
+;       Changed code so that the maximum of a line is checked to be
+;       within in a range less than the minimum of reference line
+;       and the minimum of a line be checked within a range 
+;       greater than the maximum of a reference line. This was done
+;       to reduce the creation of triangles in joined lines. 
+;       Also modified so that lines that are used are correctly
+;       appended to the `already_used' array, as well as checking
+;       to make sure there is only on maximum longitude and one
+;       minimum longitude for each line being joined. This was
+;       added to reduce artifacts from the line joining.
+;     MODIFIED 14 Oct. 2014:
+;       Finished refining the interpolation between points in lines
+;       part of the code. Interpolates to same longitudes as found in
+;       TMI data. Renamed to V3 so as to not break the code.
+;       V2 is last working.
+;       Moved to replace orginal version
+;     MODIFIED 16 Oct. 2014:
+;       Added a LIMIT keyword to restrict the domain of contours
+;       returned. This keyword gets fed into PATH_XY_2_LINES
+;     MODIFIED 21 Oct. 2014:
+;       Changed to accept the contour lines returned by
+;       PATH_XY_2_LINES or KW_CONTOUR_LINES instead of information
+;       returned to the PATH_XY and PATH_INFO keywords of the 
+;       CONTOUR procedure.
+;     MODIFIED 31 Oct. 2014 by K.R.W.
+;       Convert the points to interpolate to doubles so that
+;       interpolation indices are returned as doubles. Also use
+;       the double keyword in interpolate
+;-
+
+COMPILE_OPT IDL2                                                      ;Set compile options
+
+IF (N_PARAMS() NE 2) THEN MESSAGE, 'Incorrect number of inputs!'      ;Check number of inputs
+
+width2    = width*15                                                  ;width 2, for longitude, is ten times that of original width
+ref_lon   = 0.25*(FINDGEN(1440)+1)-0.125                              ;TMI longitude as reference
+
+;IF (limit NE !NULL) THEN BEGIN                                        ;Limit reference longitude by domain
+;  id = WHERE(limit[1] LE ref_lon AND limit[3] GE ref_lon, domain_CNT)
+;  IF (domain_CNT NE 0) THEN ref_lon = ref_lon[id]
+;ENDIF
+
+already_used = -1                                                     ;Array of the contour lines already joined
+joined_lines = {}
+
+line_num = 1
+FOR i = 0, N_TAGS(contours)-1 DO BEGIN                                ;Iterate over tags to get starting line
+  id = WHERE(i EQ already_used, CNT)                                  ;Check to see if given contour line was used already
+  IF CNT NE 0 THEN CONTINUE                                           ;If used, jump to next contour line
+  
+  max_x  = WHERE_MAX(contours.(i).X_VALUES, max_cnt)
+  min_x  = WHERE_MIN(contours.(i).X_VALUES, min_cnt)
+  IF max_CNT NE 1 OR min_CNT NE 1 THEN BEGIN                          ;If either has more than on index, do NOT use this contour
+    already_used = [already_used, i]
+    CONTINUE
+  ENDIF
+
+  temp_x = contours.(i).X_VALUES                                      ;Store x/y values of line that has not been used
+  temp_y = contours.(i).Y_VALUES
+  
+  FOR j = 0, N_TAGS(contours)-1 DO BEGIN                              ;Iterate over tags again to find lines to join with current line
+    id = WHERE(j EQ already_used, CNT)                                ;Check to see if given contour line was used already
+    IF j EQ i OR CNT NE 0 THEN CONTINUE                               ;Skip line checking against or if line already used
+    
+    max_id = WHERE_MAX(contours.(j).X_VALUES, max_CNT)                ;Find maximum x value in jth contour
+    min_id = WHERE_MIN(contours.(j).X_VALUES, min_CNT)                ;Find minimum x value in jth contour    
+
+    IF max_CNT NE 1 OR min_CNT NE 1 THEN BEGIN                        ;If either has more than on index, do NOT use this contour
+      already_used = [already_used, j]
+      CONTINUE
+    ENDIF
+    
+;    IF (MAX(contours.(j).X_VALUES) - MIN(contours.(j).X_VALUES) LT min_x_length ) THEN BEGIN
+;      already_used = [already_used, j]
+;      CONTINUE
+;    ENDIF
+    
+    max_x  = WHERE_MAX(temp_x)                                        ;Find the maximum x value for the temp contour array
+    min_x  = WHERE_MIN(temp_x)                                        ;Find the minimum x value for the temp contour array
+    
+    ;=== If values line BEFORE a given line ===;
+    IF max_CNT EQ 1 THEN BEGIN
+      id = temp_x[min_x]         GT contours.(j).X_VALUES[max_id] AND $ ;Check if min of temp is east of max of jth contour
+           temp_x[min_x]-width*2 LE contours.(j).X_VALUES[max_id] AND $
+           temp_y[min_x]+width   GE contours.(j).Y_VALUES[max_id] AND $ ; and check latitude is in range
+           temp_y[min_x]-width   LE contours.(j).Y_VALUES[max_id]
+      IF id EQ 1 THEN BEGIN
+        temp_x       = [contours.(j).X_VALUES, temp_x]                ;prepend x values to temp contour
+        temp_y       = [contours.(j).Y_VALUES, temp_y]
+        already_used = [already_used, j]
+      ENDIF
+    ENDIF
+
+    ;=== If values line AFTER a given line ===;
+    IF min_CNT EQ 1 THEN BEGIN
+      id = temp_x[max_x]+width*2 GE contours.(j).X_VALUES[min_id] AND $ ;Check if max of temp is west of min of jth contour
+           temp_x[max_x]         LT contours.(j).X_VALUES[min_id] AND $
+           temp_y[max_x]+width   GE contours.(j).Y_VALUES[min_id] AND $ ; and check latitude is in range
+           temp_y[max_x]-width   LE contours.(j).Y_VALUES[min_id]
+      IF id EQ 1 THEN BEGIN                                           ;If found lines to join not at similar longitudes
+        temp_x       = [temp_x, contours.(j).X_VALUES]                ;Append x values to temp contour
+        temp_y       = [temp_y, contours.(j).Y_VALUES]
+        already_used = [already_used, j]
+      ENDIF
+    ENDIF
+  ENDFOR                                                              ;END j
+
+  already_used = [already_used, i]                                    ;Add ith contour line to used list
+  
+  IF KEYWORD_SET(min_x_length) THEN BEGIN                             ;Before adding line, check if long enough
+		x_range = MAX(temp_x)-MIN(temp_x)
+		IF (x_range LT min_x_length) THEN CONTINUE                        ;Skip adding to array, reset tmp_line arrays
+	ENDIF
+	IF KEYWORD_SET(min_y_length) THEN BEGIN                             ;Before adding line, check if long enough
+		y_range = MAX(temp_y)-MIN(temp_y)
+		IF (y_range LT min_y_length) THEN CONTINUE                        ;Skip adding to array, reset tmp_line arrays
+	ENDIF
+	
+	min_x = WHERE_MIN(temp_x) & max_x = WHERE_MAX(temp_x)
+;=====================================================================
+; REGRESSION TO DETERMINE IF MOVING NORTH/SOUTH TOO FAST              
+  check = 8
+  id = []
+;  FOR n = 0, N_ELEMENTS(temp_x)-check-1 DO BEGIN                      ;Regression requires AT LEAST 2 points
+;    b = REGRESS(temp_x[n:n+check], temp_y[n:n+check], CORRELATION=r)  ;Compute regression
+;;    print, temp_x[n:n+check]
+;;    PRINT, b[0], r[0]
+;;    PRINT, ' '
+;    IF (ABS(b[0]) GT 0.35) AND (ABS(r[0]) GT 0.9) THEN id = [id, n+INDGEN(check+1)]
+;  ENDFOR
+;  
+;  temp_x[id] = !VALUES.F_NaN
+;  id = WHERE(FINITE(temp_x), CNT)  
+;  IF (CNT NE 0) THEN BEGIN
+;    temp_x = temp_x[id] & temp_y = temp_y[id]
+;  ENDIF
+
+   temp_y_mean = MEAN(temp_y) & temp_y_stdv = STDDEV(temp_y)
+   id = WHERE(temp_y LE temp_y_mean+temp_y_stdv AND $
+              temp_y GE temp_y_mean-temp_y_stdv, CNT)
+  IF (CNT NE 0) THEN BEGIN
+    temp_x = temp_x[id] & temp_y = temp_y[id]
+  ENDIF
+  
+  tag_name = (line_num LT 10) ? 'LINE_0'+STRTRIM(line_num,2) $        ;Create the tag anme
+															: 'LINE_' +STRTRIM(line_num,2)
+	joined_lines = CREATE_STRUCT(joined_lines, tag_name, $              ;Add line to joined line structure.
+															 {X_VALUES : temp_x, $
+															  Y_VALUES : temp_y})
+	line_num++                                                          ;Increment joined contour line counter
+ENDFOR                                                                ;END i
+
+
+
+;=====================================================================
+;=====================================================================
+; FURTHER JOIN BASED ONLY ON LATITUDE.
+;
+already_used = -1                                                     ;Reset already used array
+line_num = 1                                                          ;Reset line number count
+new_join = {}                                                         ;New structure to store further joined lines
+
+FOR i = 0, N_TAGS(joined_lines)-1 DO BEGIN                            ;Iterate over newly joined lines
+  id = WHERE(i EQ already_used, CNT)                                  ;If line already used, skip it
+  IF CNT NE 0 THEN CONTINUE
+  
+  temp_x = joined_lines.(i).X_VALUES                                  ;Store x-values of current line in temporary variable
+  temp_y = joined_lines.(i).Y_VALUES                                  ;Store y-values of current line in temporary variable
+
+  FOR j = 0, N_TAGS(joined_lines)-1 DO BEGIN                          ;Iterate over structure again to find lines to join.
+    id = WHERE(j EQ already_used, CNT)                                ;Check to see if given contour line was used already
+    IF j EQ i OR CNT NE 0 THEN CONTINUE                               ;Skip line checking against or if line already used
+    
+    WHERE_MATCH, temp_x, joined_lines.(j).X_VALUES, tmp_id, x_id      ;Determine if the lines share x-values.
+    IF (tmp_id NE !NULL) THEN CONTINUE                                ;If they share x-values, just skip, do NOT add to already_used array
+    
+    max_x  = WHERE_MAX(temp_x)                                        ;Find the maximum x value for the temp contour array
+    min_x  = WHERE_MIN(temp_x)                                        ;Find the minimum x value for the temp contour array
+  
+    max_id = WHERE_MAX(joined_lines.(j).X_VALUES)                     ;Find maximum x value in jth contour
+    min_id = WHERE_MIN(joined_lines.(j).X_VALUES)                     ;Find minimum x value in jth contour  
+    
+		id=temp_x[min_x]        GT joined_lines.(j).X_VALUES[max_id] AND $;Check if min of temp is east of max of jth contour
+			 temp_x[min_x]-width2 LE joined_lines.(j).X_VALUES[max_id] AND $
+			 temp_y[min_x]+width  GE joined_lines.(j).Y_VALUES[max_id] AND $; and check latitude is in range
+			 temp_y[min_x]-width  LE joined_lines.(j).Y_VALUES[max_id]
+		IF id EQ 1 THEN BEGIN
+			temp_x       = [joined_lines.(j).X_VALUES, temp_x]              ;Append x values to temp contour
+			temp_y       = [joined_lines.(j).Y_VALUES, temp_y]
+			already_used = [already_used, j]
+		ENDIF
+
+		id=temp_x[max_x]        LT joined_lines.(j).X_VALUES[min_id] AND $;Check if max of temp is west of min of jth contour
+			 temp_x[max_x]+width2 GE joined_lines.(j).X_VALUES[min_id] AND $
+			 temp_y[max_x]+width  GE joined_lines.(j).Y_VALUES[min_id] AND $; and check latitude is in range
+			 temp_y[max_x]-width  LE joined_lines.(j).Y_VALUES[min_id]
+		IF id EQ 1 THEN BEGIN                                             ;If found lines to join not at similar longitudes
+			temp_x       = [temp_x, joined_lines.(j).X_VALUES]              ;Append x values to temp contour
+			temp_y       = [temp_y, joined_lines.(j).Y_VALUES]
+			already_used = [already_used, j]
+		ENDIF
+  ENDFOR                                                              ;END j
+
+  already_used = [already_used, i]                                    ;Add ith contour line to used list
+  
+;===================================================================== 
+;  USE INTERPOL AND INTERPOLATE
+  id = WHERE(ref_lon GE MIN(temp_x) AND ref_lon LE MAX(temp_x), CNT)  ;Find indices to interpolate to in range
+  
+  IF (CNT NE 0) THEN BEGIN                                            
+    n_temp_x = FINDGEN(N_ELEMENTS(temp_x))
+    x_int    = INTERPOL(n_temp_x, temp_x, DOUBLE(ref_lon[id]))        ;Determine array indices for INTERPOLATE
+
+;=====================================================================
+; ONLY INTERPOLATE TO VALUES BETWEEN LONGITUDE RANGE. DO NOT EXTRAPOLATE
+;    id = WHERE(0 LE x_int AND n_temp_x-1 GE x_int, CNT)
+;    IF (CNT NE 0) THEN BEGIN
+      temp_x = ref_lon[id]                                            ;Use exact longitudes from reference array; interpolation has errors
+      temp_y = INTERPOLATE(temp_y, x_int, /DOUBLE)                    ;Interpolate y-values
+;    ENDIF
+  
+    tag_name = 'LINE_'+((line_num LT 10) ? '0'+STRTRIM(line_num,2) $
+                                         :     STRTRIM(line_num,2))
+	  ;Add line to joined line structure.
+	  new_join = CREATE_STRUCT(new_join, tag_name, $
+															 {X_VALUES : temp_x, $
+															  Y_VALUES : temp_y})
+	  line_num++
+	ENDIF ELSE BEGIN
+    MESSAGE, 'Longitude values for current ITCZ location are not '+ $ ;Else message and go to next line
+             'within the reference longitude. This ITCZ location '+ $
+             'is being skipped!', /CONTINUE 
+  ENDELSE
+ENDFOR                                                                ;END i
+
+RETURN, new_join
+END
