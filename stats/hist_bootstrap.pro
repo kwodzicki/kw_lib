@@ -1,4 +1,4 @@
-FUNCTION ITCZ_PF_1D_BOOTSTRAP, inArray, sampleSize, bootstraps, $
+FUNCTION HIST_BOOTSTRAP, inArray, sampleSize, bootstraps, $
   CONF_LEVEL = conf_level
 ;+
 ; Name:
