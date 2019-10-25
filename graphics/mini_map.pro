@@ -51,6 +51,9 @@ IF (N_ELEMENTS(projection)  EQ 0) THEN projection  = 'CYLINDRICAL'
 ;=== Set x and y zooms so that the mini map is a square
 x_zoom = map_size 
 y_zoom = (!D.X_VSIZE * map_size) / !D.Y_VSIZE
+x_ch   = FLOAT(!D.X_CH_SIZE) / !D.X_VSIZE * 2.0
+y_ch   = FLOAT(!D.Y_CH_SIZE) / !D.Y_VSIZE * 2.0
+xy_ch  = (y_ch GT x_ch) ? y_ch : x_ch
 
 ;=== Set up the limits for the mini map based on the latLon_Zoom
 lim    = maplimit + [-1, -1, 1, 1] * latLon_Zoom
@@ -75,17 +78,18 @@ ENDELSE
 ;=== Set up the position of the mini map in the graphics window                            
 pos = [0.0, 0.0, 0.0, 0.0]
 IF KEYWORD_SET(right) THEN BEGIN
-  pos[2] = position[2]-0.05 & pos[0] = pos[2] - x_zoom
+  pos[2] = position[2]-xy_ch & pos[0] = pos[2] - x_zoom
 ENDIF ELSE BEGIN
-  pos[0] = position[0]+0.05 & pos[2] = pos[0] + x_zoom
+  pos[0] = position[0]+xy_ch & pos[2] = pos[0] + x_zoom
 ENDELSE
 
 IF KEYWORD_SET(top) THEN BEGIN
-  pos[3] = position[3]-0.05 & pos[1] = pos[3] - y_zoom
+  pos[3] = position[3]-xy_ch & pos[1] = pos[3] - y_zoom
 ENDIF ELSE BEGIN
-  pos[1] = position[1]+0.05 & pos[3] = pos[1] + y_zoom
+  pos[1] = position[1]+xy_ch & pos[3] = pos[1] + y_zoom
 ENDELSE
-pos = position
+;pos = position
+
 ;=== Set up the x and y coordinates for the white background for the
 ;=== mini map.
 x      = [pos[0], pos[0], pos[2], pos[2], pos[0]]

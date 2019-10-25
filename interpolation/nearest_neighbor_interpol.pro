@@ -25,15 +25,15 @@ IF N_PARAMS() NE 4 THEN MESSAGE, 'Incorrect number of inputs!!!'
 source_dims = [N_ELEMENTS(source_x), N_ELEMENTS(source_y)]
 dest_dims   = [N_ELEMENTS(dest_x),   N_ELEMENTS(dest_y)]
 
-xx1  = REBIN(source_x, source_dims[0], dest_dims[0])                            ; Rebin source longitude to [nSource, nDest]
-xx2  = REBIN(REFORM(dest_x, 1, dest_dims[0]), source_dims[0], dest_dims[0])     ; Rebin dest longitude to [nSource, nDest]
+xx1  = REBIN(dest_x, dest_dims[0], source_dims[0] )                            ; Rebin source longitude to [nSource, nDest]
+xx2  = REBIN(REFORM(source_x, 1, source_dims[0]), dest_dims[0], source_dims[0])     ; Rebin dest longitude to [nSource, nDest]
 tmp  = MIN(xx1-xx2, x_id, DIMENSION=2, /ABSOLUTE, /NaN)                         ; Compute minimum over first dimension and get indices
-x_id = TEMPORARY(x_id) / source_dims[0]
+x_id = TEMPORARY(x_id) / dest_dims[0]
 
-yy1  = REBIN(source_y, source_dims[1], dest_dims[1])                            ; Rebin source longitude to [nSource, nDest]
-yy2  = REBIN(REFORM(dest_y, 1, dest_dims[1]), source_dims[1], dest_dims[1])     ; Rebin dest longitude to [nSource, nDest]
+yy1  = REBIN(dest_y, dest_dims[1], source_dims[1])                            ; Rebin source longitude to [nSource, nDest]
+yy2  = REBIN(REFORM(source_y, 1, source_dims[1]), dest_dims[1], source_dims[1])     ; Rebin dest longitude to [nSource, nDest]
 tmp  = MIN(yy1-yy2, y_id, DIMENSION=2, /ABSOLUTE, /NaN)                         ; Compute minimum over first dimension and get indices
-y_id = TEMPORARY(y_id) / source_dims[1]
+y_id = TEMPORARY(y_id) / dest_dims[1]
 
 IF N_ELEMENTS(x_id) EQ N_ELEMENTS(y_id) THEN BEGIN                              ; If the x- and y-indices are the same size
 	ids = []                                                                      ; Initialize array

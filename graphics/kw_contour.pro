@@ -204,7 +204,8 @@ IF (N_ELEMENTS(levels) EQ 0) THEN BEGIN                                         
 	IF N_ELEMENTS(n_levels) EQ 0 THEN n_levels = 128
   levels = FINDGEN(n_levels) * ( (zMax+1.0E-3 - zMin) / (n_levels-1.0)) + zMin  ; Generate 256 equally spaced contouring levels
   discrete = 0                                                                  ; Set discrete to zero as 256 level is too many for a discrete colorbar
-ENDIF ELSE IF (N_ELEMENTS(levels) LT 40) THEN discrete = 1                      ; ELSE IF contouring levels were input and there are less than 40 in the array, Set discrete to one
+ENDIF ELSE IF (N_ELEMENTS(levels) LT 40) AND (N_ELEMENTS(discrete) EQ 0) THEN $
+	discrete = 1                      																						; ELSE IF contouring levels were input and there are less than 40 in the array, Set discrete to one
 IF N_ELEMENTS(cbLevels) EQ 0 THEN cbLevels = levels                             ; Save original contouring levels for the color bar
 IF N_ELEMENTS(cbRange) NE 2 THEN cbRange = [MIN(cbLevels), MAX(cbLevels)]
 
@@ -216,12 +217,12 @@ lvl_min = MIN(levels_flt, MAX = lvl_max, /NaN)                                  
 OOB_LOW  = 0
 OOB_HIGH = 0
 IF (zMin LT lvl_min) THEN BEGIN                                                 ; IF the minimum value of the data is LESS THAN the lowest contouring level
-  levels_flt = [zMin-1, levels_flt]                                        ; Prepend the minimum data value rounded down to the contouring levels to ensure that these values are contoured. An out-of-bound triangle will be added to the colorbar
+  levels_flt = [FLOAT(zMin)-1.0, levels_flt]                                        ; Prepend the minimum data value rounded down to the contouring levels to ensure that these values are contoured. An out-of-bound triangle will be added to the colorbar
   OOB_LOW  = 1                                                                  ; Set OOB_LOW to zero (0)
   OOB_HIGH = 2
 ENDIF
 IF (zMax GT lvl_max) THEN BEGIN                                                 ; IF the maximum value of the data is GREATER THAN the highest contouring level
-  levels_flt = [levels_flt, zMax+1]                                         ; Append the maximum data value rounded up to the contouring levels to ensure that these values are contoured. An out-of-bound triangle will be added to the colorbar
+  levels_flt = [levels_flt, FLOAT(zMax)+1.0]                                         ; Append the maximum data value rounded up to the contouring levels to ensure that these values are contoured. An out-of-bound triangle will be added to the colorbar
   OOB_HIGH = 1                                                                  ; Set OOB_HIGH to one (1)
   IF (oob_low EQ 0) THEN oob_low = 2
 ENDIF ELSE IF KEYWORD_SET(discrete) THEN levels_flt[-1] = levels_flt[-1]+1.0E-3 ; IF color bar is to be discrete, make upper bound slightly higher than user specified. This is required because of how data is contour and how data is binned in the histogram function
@@ -425,7 +426,7 @@ IF KEYWORD_SET(colorbar) THEN $
       DISCRETE  = discrete,   $
       RANGE     = cbRange,     $
 ;      DIVISIONS = KEYWORD_SET(discrete) ? nLevels : 0, $
-      DIVISIONS = ncbLevels LT 40 ? ncbLevels-1 : 0, $
+      DIVISIONS = ( (ncbLevels LT 40) OR KEYWORD_SET(discrete) ) ? ncbLevels-1 : 0, $
       Position  = cbPos,      $
       TITLE     = cbTitle,    $
       VERTICAL  = cbVertical, $
