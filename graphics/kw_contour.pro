@@ -285,9 +285,12 @@ overplot = TOTAL(STRMATCH(extra_tags,'OVERPLOT', /FOLD_CASE),/INT) EQ 1
 IF KEYWORD_SET(map_on) THEN BEGIN                                               ; IF the MAP_ON keyword is SET
   overplot = 1                                                                  ; Overplot Must be set if plotting on map
   IF (N_ELEMENTS(mapLimit) EQ 0) THEN BEGIN                                     ; IF mapLIMIT NOT set, set to data range
-    latMin   = MIN(y, MAX=latMax)                                               ; Get minimum and maximum of latitude
-    lonMin   = MIN(x, MAX=lonMax)                                               ; Get minimum and maximum of longitude
-    mapLimit = [latMin, lonMin, latMax, lonMax]                                 ; Set maplimit to [minLat, minLon, maxLAT, maxLON]
+    latMin   = MIN(y, MAX=latMax, /NaN)                                         ; Get minimum and maximum of latitude
+    lonMin   = MIN(x, MAX=lonMax, /NaN)                                         ; Get minimum and maximum of longitude
+    IF (FINITE(latMin) EQ 0) OR (FINITE(lonMin) EQ 0) THEN $
+			mapLimit = [-90, -180, 90, 180] $
+		ELSE $
+    	mapLimit = [latMin, lonMin, latMax, lonMax]                                 ; Set maplimit to [minLat, minLon, maxLAT, maxLON]
   ENDIF ELSE BEGIN                                                              ; IF mapLIMIT SET
     latMin = mapLimit[0] & latMax = mapLimit[2]                                 ; Get minimum and maximum of latitude
     lonMin = mapLimit[1] & lonMax = mapLimit[3]                                 ; Get minimum and maximum of longitude
@@ -325,7 +328,10 @@ ENDIF ELSE IF TOTAL(extra_tags EQ 'CELL_FILL', /INTEGER) GT 0 THEN BEGIN        
   FOR i = 1, N_ELEMENTS(hist)-2 DO BEGIN                                        ; Iterate over all histogram bins
     IF (hist[i] GT 0) THEN BEGIN                                                ; IF there are data points in the ith bin, then 'color' those points with the ith color
       id = ri[ri[i]:ri[i+1]-1]                                                  ; Get indices for data points in ith bin
-      image[id] = c_colors[i-1]
+      IF ((i-1) GE c_colors.LENGTH) THEN $
+      	image[id] = oob_high $
+      ELSE $
+				image[id] = c_colors[i-1]
     ENDIF
   ENDFOR
   IF (not_Finite_CNT GT 0) THEN image[not_finite_id] = COLOR_24_KPB('WHITE')    ; IF there are NOT finite data values in the data to contour, make those locations white
@@ -444,6 +450,7 @@ IF KEYWORD_SET(colorbar) THEN $
       xLog      = cbXLog, $
       yLog      = cbYLog, $
       _EXTRA    = extra
+
 ;
 ;;=== Ensure that data arrays input are the same after procedure is run
 ;IF (N_ELEMENTS(missingvalue) EQ 1) THEN BEGIN                                   ; IF missingvalue is set
