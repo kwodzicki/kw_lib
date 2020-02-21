@@ -1,4 +1,4 @@
-FUNCTION KW_XCORR, X, Y, scaleplot = scaleplotIn, $
+FUNCTION KW_XCORR, X, Y, scaleopt = scaleoptIn, $
   Covariance = Covariance, Double = doubleIn, LAG = lag
 ;+
 ; Name:
@@ -18,7 +18,7 @@ FUNCTION KW_XCORR, X, Y, scaleplot = scaleplotIn, $
 ;                  covariance is computed.
 ;   DOUBLE     : If set to a non-zero value, computations are done in
 ;                  double precision arithmetic.
-;   SCALEPLOT  : Normalization option, specified as one of the following:
+;   SCALEOPT  : Normalization option, specified as one of the following:
 ;									'none'     — Raw, unscaled cross-correltaion. This is the only
 ;																allowed option when x and y have different
 ;																lengths.
@@ -31,7 +31,7 @@ FUNCTION KW_XCORR, X, Y, scaleplot = scaleplotIn, $
 ;   Kyle R. Wodzicki     Created 22 Mar. 2017
 ;
 ;   Adapted from C_CORRELATE with modification to match to xcorr and xcov
-;     MATLAB functions. The SCALEPLOT options are taken directly from MATLAB
+;     MATLAB functions. The SCALEOPT options are taken directly from MATLAB
 ;-
 
 COMPILE_OPT IDL2
@@ -47,7 +47,7 @@ IF (nX LT 2) THEN $
 
 lag   = INDGEN(nX * 2 - 1) - (nX - 1)																						; Generate lag values
 
-scaleplot = N_ELEMENTS(scaleplotin) EQ 0 ? 'NONE' : STRUPCASE(scaleplotin)			; Set default scaleplot value OR convert to uppercase
+scaleopt = N_ELEMENTS(scaleoptin) EQ 0 ? 'NONE' : STRUPCASE(scaleoptin)			; Set default scaleopt value OR convert to uppercase
 isComplex = (typeX EQ 6) OR (typeX EQ 9) OR (typeY EQ 6) OR (typeY EQ 9)				; Determine if any of the inputs are complex
 
 ;If the DOUBLE keyword is not set then the internal precision and
@@ -72,11 +72,11 @@ FOR k = 0L, nLag-1 DO $
 		TOTAL( Xd[ Lag[k]:* ] * Yd[0:nX - Lag[k] - 1L] ) : $
 		TOTAL( Xd[0:nX + Lag[k] - 1L] * Yd[-Lag[k]:*])
 
-IF scaleplot EQ 'BIASED'        THEN $
+IF scaleopt EQ 'BIASED'        THEN $
   Cross = TEMPORARY(Cross) / nX $
-ELSE IF scaleplot EQ 'UNBIASED' THEN $
+ELSE IF scaleopt EQ 'UNBIASED' THEN $
   Cross = TEMPORARY(Cross) / (nX - ABS(lag)) $
-ELSE IF scaleplot EQ 'COEFF'		THEN $
+ELSE IF scaleopt EQ 'COEFF'		THEN $
   Cross = TEMPORARY(Cross) / SQRT(TOTAL(Xd^2)*TOTAL(Yd^2))
 
 RETURN, useDouble ? Cross : (isComplex ? COMPLEX(Cross) : FLOAT(Cross))

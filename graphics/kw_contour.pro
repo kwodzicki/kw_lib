@@ -93,7 +93,7 @@ PRO KW_CONTOUR, in1, in2, in3, in4, $
 ;   GLOBAL_MAP
 ;   KW_HISTOGRAM
 ;   KW_IMAGE
-;   COLOR_24_KPB
+;   COLOR_24
 ;   cgLAYOUT
 ;   cgCOLORBAR
 ; Author and history:
@@ -214,20 +214,10 @@ levels_flt = (SIZE(levels, /TYPE) LT 4) ? FLOAT(levels) : levels                
 range   = [levels_flt[0], levels_flt[-1]]                                       ; If NO range for contours was input, set range to MIN/MAX of data to plot
 lvl_min = MIN(levels_flt, MAX = lvl_max, /NaN)                                  ; Get the minimum and maximum values of the contouring levels
 
-OOB_LOW  = 0
-OOB_HIGH = 0
-IF (zMin LT lvl_min) THEN BEGIN                                                 ; IF the minimum value of the data is LESS THAN the lowest contouring level
-  levels_flt = [FLOAT(zMin)-1.0, levels_flt]                                        ; Prepend the minimum data value rounded down to the contouring levels to ensure that these values are contoured. An out-of-bound triangle will be added to the colorbar
-  OOB_LOW  = 1                                                                  ; Set OOB_LOW to zero (0)
-  OOB_HIGH = 2
-ENDIF
-IF (zMax GT lvl_max) THEN BEGIN                                                 ; IF the maximum value of the data is GREATER THAN the highest contouring level
-  levels_flt = [levels_flt, FLOAT(zMax)+1.0]                                         ; Append the maximum data value rounded up to the contouring levels to ensure that these values are contoured. An out-of-bound triangle will be added to the colorbar
-  OOB_HIGH = 1                                                                  ; Set OOB_HIGH to one (1)
-  IF (oob_low EQ 0) THEN oob_low = 2
-ENDIF ELSE IF KEYWORD_SET(discrete) THEN levels_flt[-1] = levels_flt[-1]+1.0E-3 ; IF color bar is to be discrete, make upper bound slightly higher than user specified. This is required because of how data is contour and how data is binned in the histogram function
-
-nLevels = N_ELEMENTS(levels_flt)-1 + (oob_low EQ 2) + (oob_high EQ 2)           ; Set the number of levels for contouring. This is the same as the number of colors to load
+OOB_LOW    = (zMin LT lvl_min) OR (N_ELEMENTS(oob_low_col)  GT 0)
+OOB_HIGH   = (zMax GT lvl_max) OR (N_ELEMENTS(oob_high_col) GT 0)
+levels_flt = [MIN([zMin, levels_flt])-1.0, levels_flt, MAX([zMax,levels_flt])+1.0]                   ; Prepend the minimum data value rounded down to the contouring levels to ensure that these values are contoured. An out-of-bound triangle will be added to the colorbar
+nLevels    = N_ELEMENTS(levels_flt)-1																							; Set the number of levels for contouring. This is the same as the number of colors to load
 
 IF (N_ELEMENTS(rgb_colors) EQ 0) THEN BEGIN                                     ; IF no RGB color table was explicitly entered
 	IF (N_ELEMENTS(color_table) EQ 0) THEN color_table = 33                       ; IF not color table is defined by the user, set the default table to 33
@@ -237,16 +227,16 @@ IF (N_ELEMENTS(rgb_colors) EQ 0) THEN BEGIN                                     
 		IF (N_ELEMENTS(oob_low_col) EQ 3) THEN $                                    ; IF it is an RGB array
 			rgb_colors[0,*] = oob_low_col $                                           ; Set first element of RGB arrays to the RGB values of the OOB_LOW color
 		ELSE $                                                                      ; ELSE if it is a 24-bit color
-			rgb_colors[0,*] = COLOR_24_KPB(oob_low_col, /INVERT)                      ; Parse the color back to RGB
+			rgb_colors[0,*] = COLOR_24(oob_low_col, /ARRAY, /INVERT)									; Parse the color back to RGB
 	IF (N_ELEMENTS(oob_high_col) NE 0) AND OOB_HIGH EQ 1 THEN $                   ; IF the user specified an OOB_HIGH color
 		IF (N_ELEMENTS(oob_high_col) EQ 3) THEN $                                   ; IF it is an RGB array
 			rgb_colors[-1,*] = oob_high_col $                                         ; Set first element of RGB arrays to the RGB values of the OOB_LOW color
 		ELSE $                                                                      ; ELSE if it is a 24-bit color
-			rgb_colors[-1,*] = COLOR_24_KPB(oob_high_col, /INVERT)                    ; Parse the color back to RGB
+			rgb_colors[-1,*] = COLOR_24(oob_high_col, /ARRAY, /INVERT)								; Parse the color back to RGB
 ENDIF ELSE BEGIN
   old_rgb = rgb_colors
   IF (SIZE(rgb_colors, /N_DIMENSION) EQ 1) THEN $                               ; Assume the colors are 24-bit, must decompose
-    rgb_colors = COLOR_24_KPB(old_rgb, /INVERT)                                 ; Parse 24-bit colors into rgb values
+    rgb_colors = COLOR_24(old_rgb, /ARRAY, /INVERT)															; Parse 24-bit colors into rgb values
 
   rgb_dims = SIZE(rgb_colors, /DIMENSION)
 	IF (rgb_dims[1] NE 3) THEN BEGIN                                              ; If there are NOT 3 rows
@@ -262,7 +252,7 @@ ENDIF ELSE BEGIN
 		  IF (N_ELEMENTS(oob_low_col) EQ 3) THEN $                                  ; IF it is an RGB array
 			  rgb_colors[0,*] = oob_low_col $                                         ; Prepend OOB_LOW color to RGB Arrays
 		  ELSE $                                                                    ; ELSE if it is a 24-bit color
-			  rgb_colors[0,*] = COLOR_24_KPB(oob_low_col, /INVERT) $                  ; Parse the color back to RGB
+			  rgb_colors[0,*] = COLOR_24(oob_low_col, /ARRAY, /INVERT) $							; Parse the color back to RGB
 		ELSE IF nLevels NE rgb_dims[0] THEN $                                       ; IF the user did NOT specified an OOB_LOW color
 		 rgb_colors[0,*] = 0                                                        ; Set to OOB_Low color to BLACK
 	IF (OOB_HIGH EQ 1) THEN $                                                     ; IF data to plot had values above initial contour levels, a color must be appended
@@ -270,16 +260,16 @@ ENDIF ELSE BEGIN
 		IF (N_ELEMENTS(oob_high_col) EQ 3) THEN $                                   ; IF it is an RGB array
 			rgb_colors[-1,*] = oob_high_col $                                         ; Append OOB_HIGH color to RGB Arrays
 		ELSE $                                                                      ; ELSE if it is a 24-bit color
-			rgb_colors[-1,*] = COLOR_24_KPB(oob_high_col, /INVERT) $                  ; Parse the color back to RGB
+			rgb_colors[-1,*] = COLOR_24(oob_high_col, /ARRAY, /INVERT) $							; Parse the color back to RGB
 	 ELSE IF nLevels NE rgb_dims[0] THEN $                                        ; IF the user did NOT specified an OOB_LOW color
 		 rgb_colors[-1,*] = [127, 0, 127]                                           ; Set to OOB_HIGH color to PURPLE
 ENDELSE
 
 IF KEYWORD_SET(ctReverse) THEN rgb_colors = REVERSE(rgb_colors, 1)
-c_colors = COLOR_24_KPB(rgb_colors[*,0],rgb_colors[*,1],rgb_colors[*,2])
+c_colors = COLOR_24(rgb_colors[*,0],rgb_colors[*,1],rgb_colors[*,2])
 
-IF (oob_low  EQ 2) THEN c_colors = c_colors[1:*]
-IF (oob_high EQ 2) THEN c_colors = c_colors[0:-2]
+oob_low  = (oob_low  EQ 1) ? REFORM(rgb_colors[ 0,*]) : !NULL
+oob_high = (oob_high EQ 1) ? REFORM(rgb_colors[-1,*]) : !NULL 
 
 overplot = TOTAL(STRMATCH(extra_tags,'OVERPLOT', /FOLD_CASE),/INT) EQ 1
 IF KEYWORD_SET(map_on) THEN BEGIN                                               ; IF the MAP_ON keyword is SET
@@ -334,7 +324,7 @@ ENDIF ELSE IF TOTAL(extra_tags EQ 'CELL_FILL', /INTEGER) GT 0 THEN BEGIN        
 				image[id] = c_colors[i-1]
     ENDIF
   ENDFOR
-  IF (not_Finite_CNT GT 0) THEN image[not_finite_id] = COLOR_24_KPB('WHITE')    ; IF there are NOT finite data values in the data to contour, make those locations white
+  IF (not_Finite_CNT GT 0) THEN image[not_finite_id] = COLOR_24('WHITE')				; IF there are NOT finite data values in the data to contour, make those locations white
 
   KW_IMAGE, image, x, y, /Axes, /COLOR_24, $
     XRange   = [MIN(x), MAX(x)],    $
@@ -361,14 +351,6 @@ IF KEYWORD_SET(map_on) THEN $                                                   
     GRID_COLOR = grid_color, $
     _EXTRA     = extra
 
-IF (oob_low GT 0) THEN BEGIN
-  IF (oob_low EQ 1) THEN oob_low = REFORM(rgb_colors[0,*]) ELSE oob_low  = !NULL
-  rgb_colors = rgb_colors[1:*,*]
-ENDIF ELSE oob_low = !NULL
-IF (oob_high GT 0) THEN BEGIN
-  IF (oob_high EQ 1) THEN oob_high = REFORM(rgb_colors[-1,*]) ELSE oob_high = !NULL
-  rgb_colors = rgb_colors[0:-2, *]
-ENDIF ELSE oob_high = !NULL
 
 ;=== Determine if BOX_AXES or LABEL_AXES is set
 axes = TOTAL(STRMATCH(extra_tags,'BOX_AXES')+STRMATCH(extra_tags,'LABEL_AXES'),/INT)
@@ -416,6 +398,9 @@ FOR i = 0, N_TAGS(extra)-1 DO $
   IF TOTAL(i EQ remove_ids, /INT) EQ 0 THEN $
     tmp = CREATE_STRUCT(extra_tags[i], extra.(i))
 extra = TEMPORARY(tmp)
+
+IF (N_ELEMENTS(oob_low)  GT 0) OR (N_ELEMENTS(oob_high) GT 0) THEN $
+  rgb_colors = rgb_colors[1:-2, *]
 
 IF KEYWORD_SET(colorbar) THEN $
   IF KEYWORD_SET(label_under) THEN $

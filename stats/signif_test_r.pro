@@ -25,6 +25,7 @@ FUNCTION SIGNIF_TEST_R, sig, N, DOF = dof, TABLE = table
 ;-
 COMPILE_OPT IDL2
 
+sig = 100.0 - sig
 ;=== Code to generate table of values
 IF KEYWORD_SET(TABLE) THEN BEGIN
 	dof = [INDGEN(30)+1,INDGEN(4)*5+35,INDGEN(5)*10+60,125, 150,INDGEN(4)*100+200,1000]	; Generate degrees of freedom for table
