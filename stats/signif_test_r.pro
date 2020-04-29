@@ -1,4 +1,4 @@
-FUNCTION SIGNIF_TEST_R, sig, N, DOF = dof, TABLE = table
+FUNCTION SIGNIF_TEST_R, sigIn, N, DOF = dof, TABLE = table
 ;+
 ; Name:
 ;   SIGNIF_TEST_R 
@@ -9,8 +9,8 @@ FUNCTION SIGNIF_TEST_R, sig, N, DOF = dof, TABLE = table
 ;   Thomson and Emery (2014) Data Analysis Methods in Physical Oceanography, 
 ;   3rd Edition.
 ; Inputs:
-;   sig  : Significance level (in percent) to test at.
-;   N    : Number of samples in your data. Used to determine degrees of freedom
+;   sigIn  : Significance level (in percent) to test at.
+;   N      : Number of samples in your data. Used to determine degrees of freedom
 ;           defined as (N - 2). If DOF keyword is set, this value is NOT used.
 ; Outputs:
 ;   Returns the correlation coefficient required for a significant relationship.
@@ -25,7 +25,7 @@ FUNCTION SIGNIF_TEST_R, sig, N, DOF = dof, TABLE = table
 ;-
 COMPILE_OPT IDL2
 
-sig = 100.0 - sig
+sig = 100.0 - sigIn
 ;=== Code to generate table of values
 IF KEYWORD_SET(TABLE) THEN BEGIN
 	dof = [INDGEN(30)+1,INDGEN(4)*5+35,INDGEN(5)*10+60,125, 150,INDGEN(4)*100+200,1000]	; Generate degrees of freedom for table

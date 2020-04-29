@@ -7,6 +7,7 @@ FUNCTION localComputeSpectra, Sxx, x, y, xStart, xEnd, win, options, $
 			in = x[xStart[i]:xEnd[i],*] $
 		ELSE $																																			; If x AND y input
 			in = { X : x[xStart[i]:xEnd[i],*], Y : y[xStart[i]:xEnd[i],*] }
+    options.NFFT = (xEnd[i]-xStart[i])+1
 		Pxx = MATLAB_COMPUTEPERIODOGRAM(in,win,options.NFFT,esttype,FS=options.Fs)	; Compute the periodogram
 		CASE cmethod OF																															; Case of cmethod
 			'PLUS'	:	Sxx = TEMPORARY(Sxx) + Pxx.(0)																	; If PLUS, sum the spectra
@@ -23,7 +24,7 @@ FUNCTION localComputeSpectra, Sxx, x, y, xStart, xEnd, win, options, $
 		esttype, FS = options.Fs)
 END
 
-FUNCTION MATLAB_PWELCH, xin, $
+FUNCTION MATLAB_PWELCH, xin, yin, $
 	WINDOW       = window, $
 	NOVERLAP     = noverlap, $
 	NFFT         = nfft, $
@@ -117,17 +118,19 @@ COMPILE_OPT IDL2
 IF N_ELEMENTS(spectrumType) EQ 0 THEN spectrumType = 'psd'											; Set default spectrum type
 ; Determine if one or two signals input
 is2sig = 0B																																			; Set is two signals to false as default
-IF SIZE(xin, /TYPE) EQ 8 THEN	BEGIN																							; Check if x type is structure
-	IF N_TAGS(xin) GT 1 THEN BEGIN
-		y = REFORM(xin.(1))																													; Set y removing any dimensions of length 1
-		is2sig = 1B																																	; Set two signals flag to true
-	ENDIF
-	x = REFORM(xin.(0))																														; Get x values from the structure and remove any dimensions of length 1
-ENDIF ELSE $
-	IF TOTAL(STRMATCH(['psd','power','ms'],spectrumType,/FOLD_CASE),/INT) EQ 0 THEN $
-		MESSAGE, 'Must input structure for given specturm type!' $
-	ELSE $
-		x = REFORM(xin)																															; Remove any dimensions of length 1
+x = REFORM(xin)
+IF N_ELEMENTS(yin) GT 0 THEN y = REFORM(yin)
+;IF SIZE(xin, /TYPE) EQ 8 THEN	BEGIN																							; Check if x type is structure
+;	IF N_TAGS(xin) GT 1 THEN BEGIN
+;		y = REFORM(xin.(1))																													; Set y removing any dimensions of length 1
+;		is2sig = 1B																																	; Set two signals flag to true
+;	ENDIF
+;	x = REFORM(xin.(0))																														; Get x values from the structure and remove any dimensions of length 1
+;ENDIF ELSE $
+;	IF TOTAL(STRMATCH(['psd','power','ms'],spectrumType,/FOLD_CASE),/INT) EQ 0 THEN $
+;		MESSAGE, 'Must input structure for given specturm type!' $
+;	ELSE $
+;		x = REFORM(xin)																															; Remove any dimensions of length 1
 
 x_info   = SIZE(x)																															; Get information about x
 Lx       = x_info[1] 																														; Set Lx to size of first dimension of x

@@ -2,7 +2,8 @@ FUNCTION KW_HISTOGRAM, in_data, $
   MIN             = in_min, $
   MAX             = in_max, $
   BINSIZE         = in_bin, $
-  REVERSE_INDICES = ri
+  REVERSE_INDICES = ri,     $
+  OUT_OF_BOUND    = out_of_bound
 ;+
 ; Name:
 ;   KW_HISTOGRAM
@@ -20,13 +21,16 @@ FUNCTION KW_HISTOGRAM, in_data, $
 ;                      one (1) value in this keyword, then assumes it contains
 ;                      boundaries for all bins.
 ;   REVERSE_INDICES : Set to named variable to return the reverse indices to.
+;   OUT_OF_BOUND    : Set to named varaible to return boolean of whether
+;                      out-of-bound data are include in histogram.
 ; Author and History:
 ;   Kyle R. Wodzicki     Created 11 Jan. 2016
 ;-
 
 COMPILE_OPT IDL2
 
-IF (N_ELEMENTS(in_bin) GT 1) THEN $
+out_of_bound = N_ELEMENTS(in_bin) GT 1
+IF out_of_bound THEN $
   RETURN, HISTOGRAM( VALUE_LOCATE(in_bin, in_data), $
     MIN             = -1, $
     MAX             = N_ELEMENTS(in_bin)-1, $

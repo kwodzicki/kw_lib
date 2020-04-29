@@ -167,12 +167,13 @@ ENDIF ELSE BEGIN                                                                
   u = in1 & v = in2 & x = in3 & y = in4                                         ; Then set u, v, x, and y vars
   z = SQRT(u^2 + v^2)                                                           ; Calculate magnitude of vectors as z
 ENDELSE
-IF N_TAGS(extra) GT 0 THEN extra_in = extra
+extra = DICTIONARY(extra)
+;help, extra
+;IF N_TAGS(extra) GT 0 THEN extra_in = extra
 ;HELP, extra
 
-zMin       = MIN(z, MAX = zMax, /NaN)                                           ; Get minimum and maximum of the data to plot
-z_type     = SIZE(z, /TYPE)                                                     ; Get the type of data to plot
-extra_tags = (N_TAGS(extra) NE 0) ? TAG_NAMES(extra) : ''                       ; Get tag names from extra variable input
+zMin    = MIN(z, MAX = zMax, /NaN)                                           ; Get minimum and maximum of the data to plot
+z_type  = SIZE(z, /TYPE)                                                     ; Get the type of data to plot
 
 IF (N_ELEMENTS(missingvalue) EQ 1) THEN BEGIN                                   ; IF there is a missing value set
   miss_id = WHERE(z EQ missingvalue, miss_CNT)                                  ; Locate missing values in the data to plot
@@ -210,14 +211,14 @@ IF N_ELEMENTS(cbLevels) EQ 0 THEN cbLevels = levels                             
 IF N_ELEMENTS(cbRange) NE 2 THEN cbRange = [MIN(cbLevels), MAX(cbLevels)]
 
 levels_flt = (SIZE(levels, /TYPE) LT 4) ? FLOAT(levels) : levels                ; If the levels input are not of type FLOAT, then convert them; ELSE no conversion necessary
-
 range   = [levels_flt[0], levels_flt[-1]]                                       ; If NO range for contours was input, set range to MIN/MAX of data to plot
 lvl_min = MIN(levels_flt, MAX = lvl_max, /NaN)                                  ; Get the minimum and maximum values of the contouring levels
 
-OOB_LOW    = (zMin LT lvl_min) OR (N_ELEMENTS(oob_low_col)  GT 0)
-OOB_HIGH   = (zMax GT lvl_max) OR (N_ELEMENTS(oob_high_col) GT 0)
-levels_flt = [MIN([zMin, levels_flt])-1.0, levels_flt, MAX([zMax,levels_flt])+1.0]                   ; Prepend the minimum data value rounded down to the contouring levels to ensure that these values are contoured. An out-of-bound triangle will be added to the colorbar
-nLevels    = N_ELEMENTS(levels_flt)-1																							; Set the number of levels for contouring. This is the same as the number of colors to load
+OOB_LOW   = (zMin LT lvl_min) OR (N_ELEMENTS(oob_low_col)  GT 0)
+OOB_HIGH  = (zMax GT lvl_max) OR (N_ELEMENTS(oob_high_col) GT 0)
+IF OOB_LOW OR OOB_HIGH THEN $
+  levels_flt = [ MIN([zMin, lvl_min])-1.0, levels_flt, MAX([zMax, lvl_max])+1.0]
+nLevels   = N_ELEMENTS(levels_flt)-1																							; Set the number of levels for contouring. This is the same as the number of colors to load
 
 IF (N_ELEMENTS(rgb_colors) EQ 0) THEN BEGIN                                     ; IF no RGB color table was explicitly entered
 	IF (N_ELEMENTS(color_table) EQ 0) THEN color_table = 33                       ; IF not color table is defined by the user, set the default table to 33
@@ -271,7 +272,8 @@ c_colors = COLOR_24(rgb_colors[*,0],rgb_colors[*,1],rgb_colors[*,2])
 oob_low  = (oob_low  EQ 1) ? REFORM(rgb_colors[ 0,*]) : !NULL
 oob_high = (oob_high EQ 1) ? REFORM(rgb_colors[-1,*]) : !NULL 
 
-overplot = TOTAL(STRMATCH(extra_tags,'OVERPLOT', /FOLD_CASE),/INT) EQ 1
+overplot = extra.HasKey('OVERPLOT') ? extra['OVERPLOT'] : 0
+
 IF KEYWORD_SET(map_on) THEN BEGIN                                               ; IF the MAP_ON keyword is SET
   overplot = 1                                                                  ; Overplot Must be set if plotting on map
   IF (N_ELEMENTS(mapLimit) EQ 0) THEN BEGIN                                     ; IF mapLIMIT NOT set, set to data range
@@ -290,7 +292,7 @@ IF KEYWORD_SET(map_on) THEN BEGIN                                               
     MAPLIMIT   = mapLimit,  $
     POSITION   = position,  $
     PROJECTION = projection, $
-    _EXTRA     = extra
+    _EXTRA     = extra.ToStruct()
 ENDIF ELSE BEGIN
   !P.BACKGROUND = !D.N_COLORS-1
   !P.COLOR      = 0
@@ -311,7 +313,7 @@ IF N_PARAMS() EQ 4 THEN BEGIN
 			MISSING  = missingvalue;, $
 ;			_EXTRA   = extra
 	ENDFOR
-ENDIF ELSE IF TOTAL(extra_tags EQ 'CELL_FILL', /INTEGER) GT 0 THEN BEGIN                   ; IF the CELL_FILL keyword is SET, then build the image pixel by pixel
+ENDIF ELSE IF extra.HasKey('CELL_FILL') THEN BEGIN															; IF the CELL_FILL keyword is SET, then build the image pixel by pixel
   hist  = KW_HISTOGRAM(z, BIN=levels_flt, REVERSE_INDICES=ri)                   ; Use KW_HISTOGRAM to bin the data into contour levels and get the reverse indices
   zSize = SIZE(z, /DIMENSIONS)                                                  ; Get the size of the data to contour
   image = LONARR(zSize)                                                         ; Initialize array to store 24-bit color values for each data point in
@@ -332,16 +334,16 @@ ENDIF ELSE IF TOTAL(extra_tags EQ 'CELL_FILL', /INTEGER) GT 0 THEN BEGIN        
     NOERASE  = noErase,             $
     POSITION = position,            $
     MAP      = KEYWORD_SET(map_on), $
-    _EXTRA   = extra
+    _EXTRA   = extra.ToStruct()
 ENDIF ELSE BEGIN
 	CONTOUR, z, x, y, $
 		C_COLORS  = c_colors,            $
 		LEVELS    = levels_flt,          $
 		NLEVELS   = nLevels,             $
 		OVERPLOT  = overplot,            $
-  	    POSITION  = position,            $
+  	POSITION  = position,            $
 		CELL_FILL = KEYWORD_SET(map_on) OR KEYWORD_SET(c_fill), $
-		_EXTRA    = extra
+		_EXTRA    = extra.ToStruct()
 ENDELSE
 
 IF KEYWORD_SET(map_on) THEN $                                                   ; If MAP_ON is SET, overplot lat/lon and continents
@@ -349,11 +351,10 @@ IF KEYWORD_SET(map_on) THEN $                                                   
     MAPLIMIT   = maplimit,   $
     MAP_COLOR  = map_color,  $
     GRID_COLOR = grid_color, $
-    _EXTRA     = extra
-
+    _EXTRA     = extra.ToStruct()
 
 ;=== Determine if BOX_AXES or LABEL_AXES is set
-axes = TOTAL(STRMATCH(extra_tags,'BOX_AXES')+STRMATCH(extra_tags,'LABEL_AXES'),/INT)
+axes = extra.HasKey('BOX_AXES') + extra.HasKey('LABEL_AXES');TOTAL(STRMATCH(extra_tags,'BOX_AXES')+STRMATCH(extra_tags,'LABEL_AXES'),/INT)
 IF (N_ELEMENTS(cbPos) EQ 0) THEN BEGIN                                          ; IF a location for the color bar is NOT specified
   xChar = FLOAT(!D.X_CH_SIZE) / !D.X_VSIZE
   yChar = FLOAT(!D.Y_CH_SIZE) / !D.Y_VSIZE
@@ -386,18 +387,14 @@ IF (N_ELEMENTS(cbLabels) EQ 0) THEN $
 ncbLevels = N_ELEMENTS(cbLevels)
 
 tags_remove = ['FILL', 'CELL_FILL', 'BOX_AXES', 'ADVANCE', 'NLEVELS', $
-               'TITLE', 'USA', 'LONDEL', 'LATDEL', 'LIMIT', 'X*', 'Y*', $
+               'TITLE', 'USA', 'LONDEL', 'LATDEL', 'LIMIT', 'ISOTROPIC', $
                'CHARSIZE', 'IRREGULAR', 'COUNTRIES', 'CONTINENTS', 'OVERPLOT']
-remove_ids = []
-FOR i = 0, N_ELEMENTS(tags_remove)-1 DO BEGIN
-	id = WHERE(STRMATCH(extra_tags, tags_remove[i], /FOLD_CASE), CNT)
-	IF CNT GT 0 THEN remove_ids = [remove_ids, id]
-ENDFOR
-tmp = {}
-FOR i = 0, N_TAGS(extra)-1 DO $
-  IF TOTAL(i EQ remove_ids, /INT) EQ 0 THEN $
-    tmp = CREATE_STRUCT(extra_tags[i], extra.(i))
-extra = TEMPORARY(tmp)
+FOREACH key, tags_remove DO $
+  IF extra.HasKey( key ) THEN $
+    extra.Remove, key
+FOREACH key, extra.Keys() DO $
+  IF (STRMID(key, 0, 1) EQ 'X') OR (STRMID(key, 0, 1) EQ 'Y') THEN $
+    extra.Remove, key 
 
 IF (N_ELEMENTS(oob_low)  GT 0) OR (N_ELEMENTS(oob_high) GT 0) THEN $
   rgb_colors = rgb_colors[1:-2, *]
@@ -434,7 +431,7 @@ IF KEYWORD_SET(colorbar) THEN $
       yMinor    = 1, $
       xLog      = cbXLog, $
       yLog      = cbYLog, $
-      _EXTRA    = extra
+      _EXTRA    = extra.ToStruct()
 
 ;
 ;;=== Ensure that data arrays input are the same after procedure is run

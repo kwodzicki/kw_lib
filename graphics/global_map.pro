@@ -11,7 +11,7 @@ PRO GLOBAL_MAP,$
 	MAP_COLOR       = map_color,     $
 	GRID_COLOR      = grid_color,    $
 	FILL_CONTINENTS = fill_continents, $
-  _EXTRA          = extra
+  _EXTRA          = _extra
 ;+
 ; Name:
 ;   GLOBAL_MAP
@@ -70,31 +70,25 @@ PRO GLOBAL_MAP,$
 ;-
 
 COMPILE_OPT IDL2, HIDDEN                                              ;Set compile options
+
 !P.BACKGROUND = !D.N_COLORS-1
 !P.COLOR      = 0
 
 xChar = FLOAT(!D.X_CH_SIZE) / !D.X_VSIZE
 yChar = FLOAT(!D.Y_CH_SIZE) / !D.Y_VSIZE
 
-IF N_TAGS(extra) GT 0 THEN BEGIN
-	extra_in = extra
-  tags = TAG_NAMES(extra)
-  IF TOTAL(tags EQ 'CONTINENTS', /INTEGER) EQ 0 THEN $
-    extra = CREATE_STRUCT(extra, 'CONTINENTS', 1)
-  ;=== Filter out keywords that my cause duplicate keyword errors.
-  id = WHERE(tags NE 'FILL', CNT)
-  IF CNT GT 0 THEN BEGIN
-  	e_new = {}
-    FOR i = 0, CNT-1 DO e_new = CREATE_STRUCT(e_new, tags[id[i]], extra.(id[i]))
-	  extra = TEMPORARY(e_new)
-	ENDIF
-ENDIF
+extra = DICTIONARY(_extra)																										; Convert _extra to dictionary
+IF extra.HasKey('TITLE')      EQ 1 THEN title = extra.Remove('TITLE')				; If 'TITLE' key exists, remove it and store locally
+IF extra.HasKey('CONTINENTS') EQ 0 THEN extra['CONTINENTS'] = 1							; If 'CONTINENTS' not found in dictionary, set to one (1); i.e., enabled
+IF extra.HasKey('LATDEL')     EQ 0 THEN extra['LATDEL']     = 15.0
+IF extra.HasKey('LONDEL')     EQ 0 THEN extra['LONDEL']     = 30.0
 
-IF (N_ELEMENTS(charsize)   EQ 0) THEN charsize = 1
-IF ~KEYWORD_SET(title)           THEN title=' '
-IF KEYWORD_SET(box_axes)         THEN title = title+'!C'                      ;Add return if box_axes set
-IF ~KEYWORD_SET(latDel)          THEN latDel = 15.0                            ;Set to default if not set
-IF ~KEYWORD_SET(lonDel)          THEN lonDel = 30.0                            ;Set to default if not set
+;=== Filter out keywords that my cause duplicate keyword errors.
+FOREACH key, extra.Keys() DO $																							; Iterate over all keys
+  IF STRMATCH(key, '*FILL*', /FOLD_CASE) THEN $															; If key contains 'FILL'
+    _ = extra.Remove(key)																										; Remove it
+
+IF (N_ELEMENTS(charsize)   EQ 0) THEN charsize = 1														; Default charsize to one (1)
 
 IF KEYWORD_SET(maplimit) THEN BEGIN                                   ;If maplimit set
   IF (N_ELEMENTS(longitude) EQ 0) THEN BEGIN                               ; and longitude not set
@@ -132,28 +126,35 @@ ENDIF ELSE BEGIN
                 NAME     = projection, $; /CYLINDRICAL, $
                 LIMIT    = maplimit,   $
                 POSITION = position,   $
-                TITLE    = title,      $
-                _EXTRA   = extra
+                _EXTRA   = extra.ToStruct()
+    !P.POSITION = position
   ENDIF ELSE BEGIN                                                    ;If not only setting map
+    IF N_ELEMENTS(title) GT 0 THEN BEGIN
+      xPos = (!P.position[0] + !P.position[2])/2.0
+      yPos =  !P.position[3] + 0.25 * yChar
+      IF extra.HasKey('BOX_AXES') EQ 1 THEN $
+        IF KEYWORD_SET(extra['BOX_AXES']) THEN $
+          yPos += 1.25 * yChar
+      XYOUTS, xPos, yPos, title, ALIGNMENT=0.5, CHARSIZE=1.25, $
+        COLOR = !P.COLOR, /NORMAL
+    ENDIF
     MAP_CONTINENTS, OVERPLOT=overplot, $
-     COLOR     			= map_color, $
-;     FILL_CONTINENTS = fill_continents;,     $
-			_EXTRA    			= extra
+       COLOR   = map_color, $
+			 _EXTRA  = extra.ToStruct()
     IF KEYWORD_SET(label_axes) THEN BEGIN
-      AXIS, xAxis=0, xRANGE=maplimit[1:*:2], xTickInterval=lonDel, $
-        xSTYLE=1, xTickLen=-1*yChar/2, CHARSIZE = charsize, COLOR=0, _EXTRA = extra
-      AXIS, xAxis=1, xRANGE=maplimit[1:*:2], xTickInterval=lonDel, $
+      AXIS, xAxis=0, xRANGE=maplimit[1:*:2], xTickInterval=extra.LONDEL, $
+        xSTYLE=1, xTickLen=-1*yChar/2, CHARSIZE = charsize, COLOR=0, _EXTRA = extra.ToStruct()
+      AXIS, xAxis=1, xRANGE=maplimit[1:*:2], xTickInterval=extra.LONDEL, $
         xSTYLE=1, xTickLen=-1*yChar/2, CHARSIZE = charsize, COLOR=0, xTickFormat="(A1)"
-      AXIS, yAxis=0, yRANGE=maplimit[0:*:2], yTickInterval=latDel, $
-        ySTYLE=1, yTickLen=-1*xChar, CHARSIZE = charsize, COLOR=0, _EXTRA = extra
-      AXIS, yAxis=1, yRANGE=maplimit[0:*:2], yTickInterval=latDel, $
+      AXIS, yAxis=0, yRANGE=maplimit[0:*:2], yTickInterval=extra.LATDEL, $
+        ySTYLE=1, yTickLen=-1*xChar, CHARSIZE = charsize, COLOR=0, _EXTRA = extra.ToStruct()
+      AXIS, yAxis=1, yRANGE=maplimit[0:*:2], yTickInterval=extra.LATDEL, $
         ySTYLE=1, yTickLen=-1*xChar, CHARSIZE = charsize, COLOR=0, yTickFormat="(A1)"
     ENDIF ELSE $
-     MAP_GRID, /LABEL, COLOR = grid_color, _EXTRA = extra
+     MAP_GRID, /LABEL, COLOR = grid_color, _EXTRA = extra.ToStruct()
   ENDELSE
 ENDELSE
 
-IF N_TAGS(extra_in) GT 0 THEN extra = extra_in
 IF KEYWORD_SET(box_axes) THEN title = FILE_BASENAME(title, '!C')      ;Remove return character from title
 !P.COLOR      = !D.N_COLORS-1
 !P.BACKGROUND = 0

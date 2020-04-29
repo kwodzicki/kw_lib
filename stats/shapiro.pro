@@ -1,3 +1,25 @@
+FUNCTION SIGN_LOCAL, a, b
+
+infoA  = SIZE(a)
+infoB  = SIZE(b)
+
+IF infoB[-1] GT 1 THEN BEGIN
+  IF infoA[-1] EQ 1 THEN $
+    signs = MAKE_ARRAY( infoB[1:infoB[0]], TYPE = infoA[-2] ) $
+  ELSE IF infoB[-1] NE infoA[-1] THEN $
+    MESSAGE, 'Size missmatch'
+ 
+  here_ge = WHERE( b GE 0, nge, COMPLEMENT=here_lt, NCOMPLEMENT=nlt )
+  IF nge GT 0 THEN signs[ here_ge ] =  a[ here_ge ] 
+  IF nlt GT 0 THEN signs[ here_lt ] = -a[ here_lt ] 
+ENDIF ELSE IF infoA[-1] EQ 1 THEN BEGIN
+  IF b GE 0 THEN RETURN, ABS(a) ELSE RETURN, -ABS(a)
+ENDIF ELSE $
+  MESSAGE, 'Size missmatch'
+
+RETURN, signs
+
+END
 FUNCTION ALNORM_LOCAL, x, upper
 ;+
 ;       EVALUATES THE TAIL AREA OF THE STANDARDIZED NORMAL CURVE FROM
@@ -44,7 +66,7 @@ FUNCTION ALNORM_LOCAL, x, upper
 	ENDIF ELSE $
 		ALNORM = ZERO  
 	
-  IF UP EQ 0B THEN ALNORM = ONE - ALNORM
+  IF NOT UP THEN ALNORM = ONE - ALNORM
     RETURN, ALNORM
 END
 
@@ -111,7 +133,7 @@ FUNCTION PPND_LOCAL, P, IFAULT
   RETURN, PPND                                                                  ; Return the PPND array
 END
 
-FUNCTION POLY_LOCAL, C, X
+FUNCTION POLY_LOCAL, C, NORD, X
 ;+
 ; Name:
 ;   POLY_LOCAL
@@ -134,13 +156,26 @@ FUNCTION POLY_LOCAL, C, X
 ; ALGORITHM AS 181.2   APPL. STATIST.  (1982) VOL. 31, NO. 2
 ;-
   COMPILE_OPT IDL2, HIDDEN
-  RETURN, TOTAL( C * X^FINDGEN( N_ELEMENTS(C) ) )
+  POLY = c[0]
+  IF (NORD EQ 1) THEN RETURN, POLY
+  P = X * c[NORD-1]
+  IF NORD NE 2 THEN BEGIN
+    N2 = NORD-2
+    J  = N2 + 1
+    FOR i = 1, N2 DO BEGIN
+      P = (P+c[j-1]) * X
+      J = J -1
+    ENDFOR 
+  ENDIF
+  RETURN, POLY + p
+  ;RETURN, TOTAL( C * X^FINDGEN( N_ELEMENTS(C) ) )
 END
 
-FUNCTION SHAPIRO, X, A = a, NaN = NaN
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+FUNCTION SWILK, X, A, INIT
 ;+
 ; Name:
-;   SHAPIRO
+;   SWILK
 ; Purpose:
 ;   An IDL function to determine if a distribution is 'normal' using the 
 ;   Shapiro-Wilk W test. This function and all sub-functions (i.e., *_LOCAL)
@@ -175,129 +210,127 @@ FUNCTION SHAPIRO, X, A = a, NaN = NaN
 ;        - 5 if the proportion censored (N-N1)/N > 0.8
 ;        - 6 if the data have zero range (if sorted on input)
 ;-
-COMPILE_OPT IDL2                                                                ; Set compile options
+COMPILE_OPT IDL2, HIDDEN                                                        ; Set compile options
 
 ;=== Define a structure of constants
-const = {C1    : [0.0E0,       0.221157E0, -0.147981E0, -0.207119E1,  0.4434685E1, -0.2706056E1], $
-         C2    : [0.0E0,       0.42981E-1, -0.293762E0, -0.1752461E1, 0.5682633E1, -0.3582633E1], $
-         C3    : [0.5440E0,   -0.39978E0,   0.25054E-1, -0.6714E-3],  $
-         C4    : [0.13822E1,  -0.77857E0,   0.62767E-1, -0.20322E-2], $
-         C5    : [-0.15861E1, -0.31082E0,  -0.83751E-1,  0.38915E-2], $
-         C6    : [-0.4803E0,  -0.82676E-1,  0.30302E-2], $
-         C7    : [0.164E0,     0.533E0], $
-         C8    : [0.1736E0,    0.315E0], $
-         C9    : [0.256E0,    -0.635E-2], $
-         G     : [-0.2273E1,   0.459E0], $
-         Z90   : 0.12816E1, $
-         Z95   : 0.16449E1, $
-         Z99   : 0.23263E1, $
-         ZM    : 0.17509E1, $
-         ZSS   : 0.56268E0, $
-         BF1   : 0.8378E0,  $
-         XX90  : 0.556E0, $
-         XX95  : 0.622E0, $
-         ZERO  : 0.0E0, $
-         ONE   : 1.0E0, $
-         TWO   : 2.0E0, $
-         THREE : 3.0E0, $
-         SQRTH : 0.70711E0, $
-         QTR   : 0.25E0, $
-         TH    : 0.375E0, $
-         SMALL : 1E-19, $
-         PI6   : 0.1909859E1, $
-         STQR  : 0.1047198E1, $
-         UPPER : 1B}
+C1    = [0.0E0,       0.221157E0, -0.147981E0, -0.207119E1,  0.4434685E1, -0.2706056E1]
+C2    = [0.0E0,       0.42981E-1, -0.293762E0, -0.1752461E1, 0.5682633E1, -0.3582633E1]
+C3    = [0.5440E0,   -0.39978E0,   0.25054E-1, -0.6714E-3]
+C4    = [0.13822E1,  -0.77857E0,   0.62767E-1, -0.20322E-2]
+C5    = [-0.15861E1, -0.31082E0,  -0.83751E-1,  0.38915E-2]
+C6    = [-0.4803E0,  -0.82676E-1,  0.30302E-2]
+C7    = [0.164E0,     0.533E0]
+C8    = [0.1736E0,    0.315E0]
+C9    = [0.256E0,    -0.635E-2]
+G     = [-0.2273E1,   0.459E0]
+Z90   = 0.12816E1
+Z95   = 0.16449E1
+Z99   = 0.23263E1
+ZM    = 0.17509E1
+ZSS   = 0.56268E0
+BF1   = 0.8378E0
+XX90  = 0.556E0
+XX95  = 0.622E0
+ZERO  = 0.0E0
+ONE   = 1.0E0
+TWO   = 2.0E0
+THREE = 3.0E0
+SQRTH = 0.70711E0
+QTR   = 0.25E0
+TH    = 0.375E0
+SMALL = 1E-19
+PI6   = 0.1909859E1
+STQR  = 0.1047198E1
+UPPER = 1B
 
+PW     = 0.0
+W      = 0.0
+INIT   = 0B
 
-x_sort = x[SORT(x)]
-IF KEYWORD_SET(nan) THEN BEGIN
-  id = WHERE(FINITE(x_sort,/NaN) EQ 0, CNT)
-  x_sort = CNT GT 0 ? x_sort[id] : !Values.F_NaN
-ENDIF
+N      = N_ELEMENTS(x)
+N1     = N
+N2     = N/2
+PW     = ONE
+AN     = N
+IFAULT = 3B
+NN2    = N / 2
+IF (N2 LT nn2) THEN RETURN, -1
+IFAULT = 1B
+IF (N LT 3) THEN RETURN, -1
 
-data = {X      : x_sort, $
-        A      : N_ELEMENTS(a) GT 0 ? a : FLTARR(N_ELEMENTS(x_sort)/2), $
-        N      : N_ELEMENTS(x_sort), $
-        W      : const.ONE, $
-        PW     : !Values.F_NaN  , $
-        IFAULT : 0B}
-
-IF N_ELEMENTS(a)  EQ 0 THEN init = 0B ELSE init = 1B                            ; If a has zero elements, set init to False (i.e., 0), else, set to True (i.e., 1)
-IF N_ELEMENTS(n1) EQ 0 THEN n1   = data.N                                       ; Set default value of n1
-IF N_ELEMENTS(n2) EQ 0 THEN n2   = data.N/2                                     ; Set default value of n2
-
-data.IFAULT = 3B                                                                ; Set IFAULT to three (3)
-IF (N2 LT data.N/2) THEN RETURN, data                                           ; IF N2 is less than half of N, return the data structure
-data.IFAULT = 1B                                                                ; Set IFAULT to one (1)
-IF (data.N LT 3) THEN RETURN, data                                              ; If there are less than three (3) data points input, return the data structure
 
 IF (NOT INIT) THEN BEGIN                                                        ; If INIT is false, calculates coefficients for the test
-  IF (data.N EQ 3) THEN $                                                       ; IF there are only three (3) values input
-    data.A[0] = const.SQRTH $                                                   ; Set the first element of data.A to a constant
+  IF N EQ 3 THEN $                                                       ; IF there are only three (3) values input
+    A[0] = SQRTH $                                                   ; Set the first element of A to a constant
   ELSE BEGIN                                                                    ; ELSE
-    tmp    = (FINDGEN(n2)+1 - const.TH) / (data.N + const.QTR)                  ; Calculate some temporary values
-    data.A = PPND_LOCAL( tmp, data.IFAULT )                                     ; Set data.A equal to the result of PPND_LOCAL
-    SUMM2  = TOTAL(data.A^2) * const.TWO                                        ; Define SUMM2 as the sum of the squares of data.A x 2
+    AN25   = AN + QTR
+    tmp    = ((FINDGEN(N2)+1) - TH) / AN25
+    A[0]   = PPND_LOCAL( tmp, IFAULT )                                     ; Set A equal to the result of PPND_LOCAL
+    SUMM2  = TOTAL(A^2) * TWO																							; Define SUMM2 as the sum of the squares of A x 2
 		SSUMM2 = SQRT( SUMM2 )                                                      ; Define SSUMM2 as the square root of SUMM2
-    RSN    = const.ONE / SQRT(data.N)                                           ; Define RSN as 1 / (square root of number of data points input)
-    A1     = POLY_LOCAL(const.C1, RSN) - data.A[0] / SSUMM2                     ; Define A1 as the result of POLY_LOCAL
+    RSN    = ONE / SQRT(AN)                                           ; Define RSN as 1 / (square root of number of data points input)
+    A1     = POLY_LOCAL(C1, 6, RSN) - A[0] / SSUMM2                     ; Define A1 as the result of POLY_LOCAL
     
     ;=== Normalize coefficients
-    IF (data.N GT 5) THEN BEGIN                                                 ; If there were greater than five (5) data points input
-      id  = 2                                                                   ; Set the index for writing data to the data.A array to two (2)
-      A2  = -data.A[1] / SSUMM2 + POLY_LOCAL(const.C2, RSN)                     ; Compute value for the second element of data.A
-      FAC = (SUMM2     - const.TWO * data.A[0]^2 - const.TWO * data.A[1]^2) / $ ; Compute the fator for normalizing the coefficients
-            (const.ONE - const.TWO * A1^2        - const.TWO * A2^2)
-      data.A[1] = A2                                                            ; Set the second element of data.A to A2
+    IF (N GT 5) THEN BEGIN                                                 ; If there were greater than five (5) data points input
+      I1  = 3
+      A2  = -A[1] / SSUMM2 + POLY_LOCAL(C2, 6, RSN)                     ; Compute value for the second element of A
+      FAC = (SUMM2     - TWO * A[0]^2 - TWO * A[1]^2) / $ ; Compute the fator for normalizing the coefficients
+            (ONE - TWO * A1^2        - TWO * A2^2)
+      A[1] = A2                                                            ; Set the second element of A to A2
     ENDIF ELSE BEGIN
-      id  = 1                                                                   ; Set the index for writing data to the data.A array to one (1)
-      FAC = (SUMM2 - const.TWO * data.A[0]^2) / (const.ONE - const.TWO * A1^2)  ; Compute the factor for normalizing the coefficients
+      I1  = 2                                                                   ; Set the index for writing data to the A array to one (1)
+      FAC = (SUMM2 - TWO * A[0]^2) / (ONE - TWO * A1^2)  ; Compute the factor for normalizing the coefficients
     ENDELSE
-    data.A[0]    = A1                                                           ; Set the first element of data.A to A1
-    data.A[id:*] = -data.A[id:*] / SQRT(FAC)
+    A[0]    = A1                                                           ; Set the first element of A to A1
+    A[I1-1] = -A[I1-1:*] / SQRT(FAC)
   ENDELSE
 ENDIF
 
-IF (N1 LT 3) THEN RETURN, data                                                  ; If N1 is less than three (3) then return the data structure
+IF (N1 LT 3) THEN RETURN, {W : w, PW : pw}                                                 ; If N1 is less than three (3) then return the data structure
 
-NCENS = data.N - N1                                                             ; Define NCENS as the number of data points input minus N1
-data.IFAULT = 4B                                                                ; Set the IFAULT value to four (4)
-IF (NCENS LT 0 OR (NCENS GT 0 AND data.N LT 20)) THEN RETURN, data              ; IF NCENS is negative OR (NCENS is GT zero and the number of data points input is less than 20) return the data structure
-data.IFAULT = 5B                                                                ; Set the IFAULT value to five (5)
+NCENS = N - N1                                                             ; Define NCENS as the number of data points input minus N1
+IFAULT = 4B                                                                ; Set the IFAULT value to four (4)
+IF (NCENS LT 0 OR (NCENS GT 0 AND N LT 20)) THEN RETURN, {W : w, PW : pw}             ; IF NCENS is negative OR (NCENS is GT zero and the number of data points input is less than 20) return the data structure
+IFAULT = 5B                                                                ; Set the IFAULT value to five (5)
 
-delta = FLOAT(NCENS)/data.N                                                     ; Define delta as the ratio of NCENS to data.N
-IF (delta GT 0.8) THEN RETURN, data                                             ; If delta is greater than 0.8 then return the data structure
-IF (data.W LT const.ZERO) THEN BEGIN                                            ; IF the data.W value is less than zero (0), calculate significance level of -W
-  W1 = const.ONE + data.W                                                       ; Define the W1 variabel as data.W + 1
-  data.IFAULT = 0B                                                              ; Set the IFAULT value in the data structure to zero (0)
-ENDIF ELSE BEGIN                                                                ; Else, the value of data.W must be greater or equal to zero
-	data.IFAULT = 6B                                                              ; Set the IFALUT value in the data structure to six (6)
-	range = data.X[-1] - data.X[0]                                                ; Calculate the range of the data
-	IF (range LT const.SMALL) THEN RETURN, data                                   ; If the range of the data is less than the value of small, then return the data structure
+delta = FLOAT(NCENS)/N                                                     ; Define delta as the ratio of NCENS to N
+IF (delta GT 0.8) THEN RETURN, {W : w, PW : pw}                                 ; If delta is greater than 0.8 then return the data structure
+IF (W LT ZERO) THEN BEGIN                                            ; IF the W value is less than zero (0), calculate significance level of -W
+  W1 = ONE + W                                                       ; Define the W1 variabel as W + 1
+  IFAULT = 0B                                                              ; Set the IFAULT value in the data structure to zero (0)
+ENDIF ELSE BEGIN                                                                ; Else, the value of W must be greater or equal to zero
+	IFAULT = 6B                                                              ; Set the IFALUT value in the data structure to six (6)
+	range = X[-1] - X[0]                                                ; Calculate the range of the data
+	IF (range LT SMALL) THEN RETURN, {W : w, PW : pw}                       ; If the range of the data is less than the value of small, then return the data structure
 	;=== Check for correct sort order on range - scaled X
-	data.IFAULT = 7B                                                              ; Set the IFALUT value in the data structure to seven (7)
-	SA       = const.ZERO                                                         ; Set the SA variable to zero (0)
-	scaled_X = data.X / RANGE                                                     ; Defined scaled_X as the input data divided by the range of the data. Used multiple times later; performed here to save some clock cycles
-	SX       = TOTAL(scaled_X)                                                    ; Define SX as the sum of the scaled_X values
+	IFAULT = 7B                                                              ; Set the IFALUT value in the data structure to seven (7)
+  XX = x / RANGE
+  SX = TOTAL(XX)
+	SA = -a[0]
 	FOR i = 1, N2 DO BEGIN                                                        ; Iterate from one (1) to N2
-	  SA -= data.A[i-1]                                                           ; Subtract the first value of data.A from the SA variable
-	  SA += data.A[-i]                                                            ; Add the last value of data.A from the SA variable
+	  SA -= A[i-1]                                                           ; Subtract the first value of A from the SA variable
+	  SA += A[-i]                                                            ; Add the last value of A from the SA variable
 	ENDFOR                                                                        ; END i
 
-	data.IFAULT = 0B                                                              ; Set the IFALUT value in the data structure to zero (0)
-	IF (data.N GT 5000) THEN data.IFAULT = 2B                                     ; If the number of data points in put is greater than 5,000, then set IFAULT to two (2)
+	IFAULT = 0B                                                              ; Set the IFALUT value in the data structure to zero (0)
+	IF (N GT 5000) THEN IFAULT = 2B                                     ; If the number of data points in put is greater than 5,000, then set IFAULT to two (2)
 	;=== Calculate W statistic as squared correlation between data and coefficients
-	SA  = SA / N1                                                                 ; Divide SA by N1
-	SX  = SX / N1                                                                 ; Divide SX by N1
-	SSX = scaled_X - SX                                                           ; Define SSX as the scaled_X values minus SX
-	SSA = FLTARR(data.N, /NoZero)                                                 ; Initialize SSA as a float array that is the same size as the input data
-	SSA[0]        = -data.A                                                       ; Write the negative of data.A to the SSA array starting at the beginning
-	SSA[data.N/2] = REVERSE(data.A)                                               ; Write data.A in reverse tot he SSA array starting at the middle
-  SSA -= SA                                                                     ; Subtract SA from every value in the SSA array
-	IF (data.N MOD 2) EQ 1 THEN SSA[N_ELEMENTS(data.A)] = -SA                     ; If the length of the input data is odd, then write -SA to the middle of the SSA array
-  SAX = TOTAL(SSA * SSX)                                                        ; Define SAX as the some of SSA x SSX
-  SSA = TOTAL(SSA^2)                                                            ; Set SSA to the sum of the squares of SSA
-  SSX = TOTAL(SSX^2)                                                            ; Set SSA to the sum of the squares of SSX
+	SA   = SA / N1                                                                 ; Divide SA by N1
+	SX   = SX / N1                                                                 ; Divide SX by N1
+	SSX  = SX - SX                                                           ; Define SSX as the scaled_X values minus SX
+	ASA  = MAKE_ARRAY(N, VALUE=-SA)                                                 ; Initialize SSA as a float array that is the same size as the input data
+  i    = LINDGEN(N1)
+  j    = REVERSE(i)
+  idNE = WHERE( i NE j, cntNE )
+  IF cntNE GT 0 THEN $
+    ASA[idNE] += SIGN_LOCAL(1, i[idNE] - j[idNE] ) * $
+                 A[ MIN( [ [ i[idNE] ], [ j[idNE] ] ], DIMENSION=2) ]
+  XSX = X / RANGE - SX
+  SSA = TOTAL(ASA * ASA)
+  SSX = TOTAL(XSX * XSX)
+  SAX = TOTAL(ASA * XSX)
+
 
   ;=== W1 equals (1-W) calculated to avoid excessive rounding error
   ;=== for W very near 1 (a potential problem in very large samples)
@@ -305,51 +338,123 @@ ENDIF ELSE BEGIN                                                                
 	W1     = (SSASSX - SAX) * (SSASSX + SAX)/(SSA * SSX)                          ; Define W1
 ENDELSE
 
-data.W = const.ONE - W1                                                         ; Set data.W to 1 - Wq
+W = ONE - W1                                                         ; Set W to 1 - Wq
 
-IF (data.N EQ 3) THEN BEGIN                                                     ; If there were only three (3) data points input
-  data.PW = const.PI6 * (ASIN(SQRT(data.W)) - const.STQR)                       ; Calculate significance level for W (exact for N=3)
-  RETURN, data                                                                  ; Return the data structure
+IF (N EQ 3) THEN BEGIN                                                     ; If there were only three (3) data points input
+  PW = PI6 * (ASIN(SQRT(W)) - STQR)                       ; Calculate significance level for W (exact for N=3)
+  RETURN, {W : w, PW : pw}                                                                  ; Return the data structure
 ENDIF
 
 Y  = ALOG(W1)                                                                   ; Define y as the log base e of W1
-XX = ALOG(data.N)                                                               ; Define XX as the log base e of data.N
-M  = const.ZERO
-S  = const.ONE
-IF (data.N LE 11) THEN BEGIN                                                    ; IF there were less than or equal to eleven (11) data points input
-  GAMMA = POLY_LOCAL(const.G, data.N)                                           ; Define gamma as the result of POLY_LOCAL
+XX = ALOG(N)                                                               ; Define XX as the log base e of N
+M  = ZERO
+S  = ONE
+IF (N LE 11) THEN BEGIN                                                    ; IF there were less than or equal to eleven (11) data points input
+  GAMMA = POLY_LOCAL(G, 2, AN)                                           ; Define gamma as the result of POLY_LOCAL
   IF (Y GE GAMMA) THEN BEGIN                                                    ; If Y is greater or equal to gamma
-    data.PW = const.SMALL                                                       ; Set the significane level for W to small
-    RETURN, data                                                                ; Return the data structure
+    PW = SMALL                                                       ; Set the significane level for W to small
+    RETURN, {W : w, PW : pw}                                                    ; Return the data structure
   ENDIF
   Y = -ALOG(GAMMA - Y)                                                          ; Re-define y as the negative of the log base e of (gamma - y)
-  M = POLY_LOCAL(const.C3, data.N)                                              ; Define M as the result of POLY_LOCAL
-  S = EXP(POLY_LOCAL(const.C4, data.N))                                         ; Define S as the exponential of the result of POLY_LOCAL
+  M = POLY_LOCAL(C3, 4, AN)                                              ; Define M as the result of POLY_LOCAL
+  S = EXP(POLY_LOCAL(C4, 4, AN))                                         ; Define S as the exponential of the result of POLY_LOCAL
 ENDIF ELSE BEGIN                                                                ; ELSE, the number of data points input is greater than 11
-  M = POLY_LOCAL(const.C5, XX)                                                  ; Define M as the result of POLY_LOCAL
-  S = EXP(POLY_LOCAL(const.C6, XX))                                             ; Define S as the exponential of the result of POLY_LOCAL
+  M = POLY_LOCAL(C5, 4, XX)                                                  ; Define M as the result of POLY_LOCAL
+  S = EXP(POLY_LOCAL(C6, 3, XX))                                             ; Define S as the exponential of the result of POLY_LOCAL
 ENDELSE
 
 IF (NCENS GT 0) THEN BEGIN                                                      ; IF NCENS is greater than zero (0)
   ;=== Censoring by proportion NCENS/N.  Calculate mean and sd of normal
   ;=== equivalent deviate of W.
   LD   = -ALOG(delta)
-  BF   = const.ONE + XX * const.BF1
-  Z90F = Z90 + BF * POLY_LOCAL(const.C7, XX90^XX)^LD
-  Z95F = Z95 + BF * POLY_LOCAL(const.C8, XX95^XX)^LD
-  Z99F = Z99 + BF * POLY_LOCAL(const.C9, XX)^LD
+  BF   = ONE + XX * BF1
+  Z90F = Z90 + BF * POLY_LOCAL(C7, 2, XX90^XX)^LD
+  Z95F = Z95 + BF * POLY_LOCAL(C8, 2, XX95^XX)^LD
+  Z99F = Z99 + BF * POLY_LOCAL(C9, 2, XX)^LD
   ;=== Regress Z90F,...,Z99F on normal deviates Z90,...,Z99 to get
   ;=== pseudo-mean and pseudo-sd of z as the slope and intercept
-  ZFM = (const.Z90F + const.Z95F + const.Z99F) / const.THREE
-  ZSD = (const.Z90*(const.Z90F-const.ZFM) + $
-         const.Z95*(const.Z95F-const.ZFM) + $
-         const.Z99*(const.Z99F-const.ZFM)) / const.ZSS
-  ZBAR = ZFM - ZSD * const.ZM
+  ZFM = (Z90F + Z95F + Z99F) / THREE
+  ZSD = (Z90*(Z90F-ZFM) + Z95*(Z95F-ZFM) + Z99*(Z99F-ZFM)) / ZSS
+  ZBAR = ZFM - ZSD * ZM
   M = M + ZBAR * S
   S = S * ZSD
 ENDIF
 
-data.PW = ALNORM_LOCAL(DOUBLE((Y - M)/S), const.UPPER)                          ; Set the significance of W to the result of ALNORM_LOCAL
-RETURN, data                                                                    ; Return the data structure
+PW = ALNORM_LOCAL(DOUBLE((Y - M)/S), UPPER)                          ; Set the significance of W to the result of ALNORM_LOCAL
+RETURN, {W : w, PW : pw}                                                                    ; Return the data structure
+
+END
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+FUNCTION SHAPIRO, X_IN, NaN = NaN, DIMENSION=dimension
+;+
+; Name:
+;   SHAPIRO
+; Purpose:
+;   Perform Shapiro Wilk test for normality
+; Inputs:
+;   x_in : Array of data
+; Keywords:
+;   NaN      : Boolean, set to exclude NaN values
+;   DIMENSION : Set to dimesion to perform test over; Default is 1
+; Returns:
+;   Structure:
+;      W    : Test statistic
+;      PW   : p-value for the hypothesis test
+;-
+COMPILE_OPT IDL2
+
+IF N_ELEMENTS(dimension) EQ 0 THEN dimension = 1
+x    = x_in
+nn   = 1
+info = SIZE(x)
+IF (info[0] GT 1) THEN BEGIN
+  IF dimension NE 1 THEN BEGIN
+    dimIDs              = INDGEN(info[0])
+    dimIDs[dimension-1] = 0
+    dimIDS[0]           = dimension-1
+    x                   = TRANSPOSE(x, dimIDs)
+    info[1:info[0]]     = info[dimIDs+1]
+  ENDIF
+  nn = PRODUCT( info[2:info[0]], /INTEGER )
+  x  = REFORM(x, info[1], nn )
+ENDIF 
+n = info[1]
+
+IF n LT 3 THEN MESSAGE, 'Data must be at least length 3.'
+
+W    = FLTARR(nn, /NoZero)
+PW   = FLTARR(nn, /NoZero)
+
+FOR i = 0, nn-1 DO BEGIN
+  a = FLTARR(n)
+  y = x[*,i]
+  y = y[SORT(y)]
+  IF KEYWORD_SET(nan) THEN BEGIN
+    id = WHERE(FINITE(y,/NaN) EQ 0, CNT)
+    y  = CNT GT 0 ? y[id] : !Values.F_NaN
+  ENDIF
+  data  = SWILK(y, a[0:(n/2)-1])
+  W[ i] = data.W
+  Pw[i] = data.PW
+ENDFOR
+
+IF nn GT 1 THEN BEGIN
+  W  = REFORM(w,  info[2:info[0]])
+  PW = REFORM(Pw, info[2:info[0]])
+ENDIF
+
+IF N_ELEMENTS(dimIDs) GT 0 THEN BEGIN
+  sIDs = SORT(dimIDs)-1
+  iid  = WHERE(sIDs GE 0)
+  W    = TRANSPOSE(W,  sIDs[iid])
+  PW   = TRANSPOSE(PW, sIDs[iid])
+ENDIF
+
+IF n GT 5000 THEN $
+  MESSAGE, 'p-value may not be accurate for N > 5000', /CONTINUE
+
+RETURN, {W : w, PW : pw}
 
 END

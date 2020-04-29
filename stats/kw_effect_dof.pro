@@ -29,10 +29,17 @@ IF (n LT 2) THEN $
 	MESSAGE, "X and Y arrays must contain 2 or more elements."
 
 IF NOT KEYWORD_SET(Leith) THEN BEGIN
-  cxx = MATLAB_XCORR(x, x, SCALEOPT = 'COEFF', /COVARIANCE)							  ; Compute auto-covariance of x 
-  cyy = MATLAB_XCORR(y, y, SCALEOPT = 'COEFF', /COVARIANCE)							  ; Compute auto-covariance of x
-  cxy = MATLAB_XCORR(x, y, SCALEOPT = 'COEFF', /COVARIANCE)							  ; Compute cross-covariance of x and y
-  RETURN, n / TOTAL( cxx * cyy + cxy * REVERSE(cxy) )									  ; Return effective degrees of freedom; 
+;  cxx = MATLAB_XCORR(x, x, SCALEOPT = 'COEFF', /COVARIANCE)							  ; Compute auto-covariance of x 
+;  cyy = MATLAB_XCORR(y, y, SCALEOPT = 'COEFF', /COVARIANCE)							  ; Compute auto-covariance of x
+;  cxy = MATLAB_XCORR(x, y, SCALEOPT = 'COEFF', /COVARIANCE)							  ; Compute cross-covariance of x and y
+  varx  = VARIANCE(x)
+  vary  = VARIANCE(y)
+  cxx   = KW_XCORR(x, x, SCALEOPT = 'COEFF', /COVARIANCE) 						  ; Compute auto-covariance of x 
+  cyy   = KW_XCORR(y, y, SCALEOPT = 'COEFF', /COVARIANCE) 						  ; Compute auto-covariance of x
+  cxy   = KW_XCORR(x, y, SCALEOPT = 'COEFF', /COVARIANCE) 						  ; Compute cross-covariance of x and y
+  ;denom = TOTAL( (cxx * cyy + cxy * REVERSE(cxy))/(varx*vary) )
+  denom = TOTAL( cxx * cyy + cxy * REVERSE(cxy) )
+  IF denom LT 1.0 THEN RETURN, !Values.F_NaN ELSE RETURN, n / denom
 ;  cxx = MATLAB_XCORR(x, x, /COVARIANCE)                                                   ; Compute auto-covariance of x 
 ;  cyy = MATLAB_XCORR(y, y, /COVARIANCE)                                                   ; Compute auto-covariance of x
 ;  cxy = MATLAB_XCORR(x, y, /COVARIANCE)                                                   ; Compute cross-covariance of x and y

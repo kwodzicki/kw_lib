@@ -56,16 +56,20 @@ LA_SVD, matrix, S, U, V, DOUBLE=double																						; Perform singular v
 eigenvalues  = MAKE_ARRAY(dims[1],          TYPE = type, /NoZero)								; Initialize eigenvalaues array
 eigenvectors = MAKE_ARRAY(dims[1], dims[1], TYPE = type, /NoZero)								; Initialize eigenvectors array
 a_t          = MAKE_ARRAY(dims[0], dims[1], TYPE = type, /NoZero)								; Initialize a_t array
-
 nn = dims[0] GT dims[1] ? dims[1] : dims[0]
+U            = TRANSPOSE(U)
+
+STOP
 FOR i = 0, nn-1 DO BEGIN																										; Iterate over first dimension
-	temp_var          = MATRIX_MULTIPLY(array, REFORM(U[i,*]), /ATRANSPOSE)       ; Compute input array times u
-	eigenvectors[0,i] = temp_var / SQRT(TOTAL(temp_var^2, DOUBLE=double))					; Compute eigenvectors
-	a_t[0,i]          = MATRIX_MULTIPLY(array, eigenvectors[*,i])		              ; Compute a_t
-	eigenvalues[i]    = CORRELATE(a_t[*,i], a_t[*,i], /COVARIANCE, DOUBLE=double)	; Compute eigenvalues
+;	temp_var          = MATRIX_MULTIPLY(array, U[*,i], /ATRANSPOSE)       ; Compute input array times u
+	temp_var          = REFORM(MATRIX_MULTIPLY(U[*,i], array) )       ; Compute input array times u
+  temp_var         /= SQRT(TOTAL(temp_var*temp_var, DOUBLE=double))
+	eigenvectors[0,i] = temp_var
+	a_t[0,i]          = MATRIX_MULTIPLY(array, temp_var)		              ; Compute a_t
+;	eigenvalues[i]    = CORRELATE(a_t[*,i], a_t[*,i], /COVARIANCE, DOUBLE=double)	; Compute eigenvalues
 ENDFOR
 
-eigenvectors = TRANSPOSE(eigenvectors)																					; Transpose the eigenvectors
+;eigenvectors = TRANSPOSE(eigenvectors)																					; Transpose the eigenvectors
 ;variance     = EIGENVALUES / TOTAL(EIGENVALUES, DOUBLE=double)									; Compute variance
 variance     = S / TOTAL(S, DOUBLE=double)									; Compute variance
 

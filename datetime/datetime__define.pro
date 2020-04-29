@@ -31,11 +31,11 @@ FUNCTION DATETIME::Init, year, month, day, hour, minute, second, NO_LEAP = no_le
   IF (N_PARAMS() LT 2) THEN month  = 1																	;Default value for month
   IF (N_PARAMS() LT 1) THEN year   = 1																	;Default value for year
   
-  IF((month  LT 1) OR (month  GT 12)) THEN MESSAGE, 'Month out of range in MAKE_DATE.'	;Check month range
-  IF((day    LT 1) OR (day    GT 31)) THEN MESSAGE, 'Day out of range in MAKE_DATE.'		;Check day range
-  IF((hour   LT 0) OR (hour   GT 23)) THEN MESSAGE, 'Hour out of range in MAKE_DATE.'		;Check hour range
-  IF((minute LT 0) OR (minute GT 59)) THEN MESSAGE, 'Minute out of range in MAKE_DATE.'	;Check minute range
-  IF((second LT 0) OR (second GT 59)) THEN MESSAGE, 'Second out of range in MAKE_DATE.'	;Check second range
+  IF((month  LT 1) OR (month  GT 12)) THEN MESSAGE, 'Month out of range.'	;Check month range
+  IF((day    LT 1) OR (day    GT 31)) THEN MESSAGE, 'Day out of range.'		;Check day range
+  IF((hour   LT 0) OR (hour   GT 23)) THEN MESSAGE, 'Hour out of range.'		;Check hour range
+  IF((minute LT 0) OR (minute GT 59)) THEN MESSAGE, 'Minute out of range.'	;Check minute range
+  IF((second LT 0) OR (second GT 59)) THEN MESSAGE, 'Second out of range.'	;Check second range
 
   self.YEAR    = year
   self.MONTH   = month

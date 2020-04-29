@@ -117,9 +117,8 @@ alpha_sig = MEr * SQRT(1.0/N + (mean_x)^2/Sxx)																	; Standard deviat
 ;corr_sig     = SIGNIF_TEST_R(conf_int, N)                                      ; Compute r value for significance
 ;beta_t_stat  = FIX( beta / beta_sig, TYPE = type)													  	; Compute t-statistic for the slope
 ;alpha_t_stat = FIX( alpha / alpha_sig, TYPE = type)														; Compute t-statistic for the intercept
-
 IF Ns GT 2 THEN BEGIN
-  corr_sig      = SIGNIF_TEST_R(conf_int, Ns)                                    ; Compute r value for significance
+  corr_sig      = SIGNIF_TEST_R(conf_int*100.0, Ns)                               ; Compute r value for significance
   beta_t_stat   = FIX( beta / beta_sig, TYPE = type)														  ; Compute t-statistic for the slope
   alpha_t_stat  = FIX( alpha / alpha_sig, TYPE = type)														; Compute t-statistic for the intercept
   beta_p_val    = FIX( 2 - 2 * T_PDF(ABS(beta_t_stat), Ns-2), TYPE = type)				; Compute p-value for slope t-statistic

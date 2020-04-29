@@ -49,10 +49,9 @@ IF N_ELEMENTS(centerDC) EQ 0 THEN centerDC = 0
 IF N_ELEMENTS(fs)       EQ 0 THEN fs       = 2 * !DPI
 IF FINITE(fs, /NaN)     EQ 1 THEN fs       = 2 * !DPI
 
-freq_res = Fs / DOUBLE(npts)																										; Compute the frequency resolution
-w        = freq_res * DINDGEN(npts)																							; Create frequency array
-
-Nyq = Fs / 2.0D0																																; Set the Nyquist frequency
+w        = KW_FFT_FREQ(npts, fs)
+Nyq      = Fs / 2.0D0																																; Set the Nyquist frequency
+freq_res = Fs / (DOUBLE(npts)*Fs) 																							; Compute the frequency resolution
 half_res = freq_res / 2.0D0																											; Half the frequency resolution
 
 ; Determine if npts is odd and determine half the number of points
@@ -77,7 +76,7 @@ IF isNPTSodd EQ 1 THEN $
 ELSE $
 	w[halfNPTS] = Nyq
 
-w[npts-1] = fs - freq_res
+;w[npts-1] = fs - freq_res
 
 ; Calculate the correct grid based on user specified values for range, centerDC, etc.
 CASE STRLOWCASE(range) OF

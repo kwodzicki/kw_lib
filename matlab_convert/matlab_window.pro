@@ -36,8 +36,8 @@ ELSE IF (N_PARAMS() NE 2) THEN $
 window = N_ELEMENTS(window) EQ 0 ? 'HANNING' : STRUPCASE(window)
 
 CASE window OF
-	'HAMMING'		:	w = 0.54D0 - 0.46D0*COS(2.0D0 * !DPI * DINDGEN(n)/(n-1) )
-	'HANNING'		:	w = 0.5D0 * (1.0D0 - COS(2.0D0 * !DPI * DINDGEN(n)/(n-1) ))
+	'HAMMING'		:	w = 0.54D0 -  0.46D0 * COS(2.0D0 * !DPI * DINDGEN(n)/(n-1) )
+	'HANNING'		:	w = 0.50D0 * (1.00D0 - COS(2.0D0 * !DPI * DINDGEN(n)/(n-1) ) )
 	'BLACKMAN'	:	BEGIN
 									M  = n MOD 2 EQ 0 ? n/2 : (n+1)/2
 									nn = DINDGEN(M)

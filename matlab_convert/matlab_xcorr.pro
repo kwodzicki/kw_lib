@@ -18,7 +18,7 @@ FUNCTION MATLAB_XCORR, X, Y, SCALEOPT = scaleoptIn, $
 ;                  covariance is computed.
 ;   DOUBLE     : If set to a non-zero value, computations are done in
 ;                  double precision arithmetic.
-;   SCALEPLOT  : Normalization option, specified as one of the following:
+;   SCALEOPT   : Normalization option, specified as one of the following:
 ;									'none'     — Raw, unscaled cross-correltaion. This is the only
 ;																allowed option when x and y have different
 ;																lengths.
