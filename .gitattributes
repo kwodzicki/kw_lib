@@ -1,0 +1,2 @@
+# Force all .pro files to be IDL
+*.pro linguist-language=IDL
