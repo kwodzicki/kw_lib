@@ -16,9 +16,12 @@ FUNCTION JOINT_HIST_BOOTSTRAP, inArray, sampleSize, bootstraps, $
 ; Keywords:
 ;   CONF_LEVEL  : Sets the alpha level for confidence interval; must be fraction.
 ;                   Default is 0.95
+;   NORMALITY   : Set to named variable that will contain Shapiro-Wilks 
+;                   normality test on return
 ; Author and History:
 ;   Kyle R. Wodzicki
 ;-
+
 COMPILE_OPT IDL2
 
 IF N_PARAMS() LT 2 THEN MESSAGE, 'Incorrect number of inputs!'

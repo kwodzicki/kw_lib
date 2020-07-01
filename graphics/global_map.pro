@@ -131,10 +131,12 @@ ENDIF ELSE BEGIN
   ENDIF ELSE BEGIN                                                    ;If not only setting map
     IF N_ELEMENTS(title) GT 0 THEN BEGIN
       xPos = (!P.position[0] + !P.position[2])/2.0
-      yPos =  !P.position[3] + 0.25 * yChar
+      ;yPos =  !P.position[3] + 0.25 * yChar
+      yPos =  !P.position[3] + 0.5 * yChar
       IF extra.HasKey('BOX_AXES') EQ 1 THEN $
         IF KEYWORD_SET(extra['BOX_AXES']) THEN $
-          yPos += 1.25 * yChar
+          yPos += 1.5 * yChar
+          ;yPos += 1.25 * yChar
       XYOUTS, xPos, yPos, title, ALIGNMENT=0.5, CHARSIZE=1.25, $
         COLOR = !P.COLOR, /NORMAL
     ENDIF

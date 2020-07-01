@@ -3,12 +3,14 @@ PRO kwPLOT, x, y, $
 	xTickUnits = xTickUnits, $
   xGridStyle = xGridStyle, $
   xTickLen   = xTickLen,   $
+  xLen_GET   = x_tick_len, $
   xTitle     = xTitle,     $
   xTick_GET  = xTick_Get,  $
 	yStyle     = yStyle,     $
   yTickUnits = yTickUnits, $
   yGridStyle = yGridStyle, $
   yTickLen   = yTickLen,   $
+  yLen_GET   = y_tick_len, $
   yTitle     = yTitle,     $
   yTick_GET  = yTick_Get,  $
   TITLE      = title,      $
@@ -44,7 +46,8 @@ ENDIF
 
 x_ch = !D.X_CH_SIZE / FLOAT(!D.X_VSIZE)
 y_ch = !D.Y_CH_SIZE / FLOAT(!D.Y_VSIZE)
-x_tick_len = -0.60 * y_ch
+;x_tick_len = -0.60 * y_ch
+x_tick_len = -0.80 * y_ch
 y_tick_len = -1.25 * x_ch
 ;IF N_TAGS(extra) GT 0 THEN $
 ;	IF TOTAL(STRMATCH(TAG_NAMES(extra), 'TITLE'), /INT) EQ 1 THEN $
@@ -107,8 +110,8 @@ IF N_TAGS(extra) GT 0 THEN BEGIN
 			extra_new = CREATE_STRUCT(extra_new, ref_extra[i], extra.(i))								; Append that data to the extra_new structure
 ENDIF
 
-IF NOT KEYWORD_SET(no_axes) THEN $
-	IF NOT KEYWORD_SET(polar) THEN BEGIN
+IF ~KEYWORD_SET(no_axes) THEN $
+	IF ~KEYWORD_SET(polar) THEN BEGIN
 		IF (N_ELEMENTS(xAxis) NE 0) THEN $
 		 AXIS, xAxis=0, xMinor=1, xTickLen=1, xGridStyle=xGridStyle, $
 			 xTickFormat="(A1)", $

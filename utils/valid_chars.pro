@@ -1,0 +1,10 @@
+FUNCTION VALID_CHARS, BYTES = bytes
+
+vals     = BYTARR(62, /NOZERO)
+vals[0]  = INDGEN(10) + 48
+vals[10] = INDGEN(26) + 65
+vals[36] = INDGEN(26) + 97
+
+IF KEYWORD_SET(bytes) THEN RETURN, vals ELSE RETURN, STRING( vals )
+
+END 

@@ -77,11 +77,10 @@ y = DOUBLE(yin)
 ; Interpolate based on keyword
 IF KEYWORD_SET(lininterp) THEN BEGIN
 	good = WHERE(FINITE(yin), nGood, COMPLEMENT=bad, NCOMPLEMENT=nBad)						; Locate all finite and non-finite values
-	IF nBad NE 0 THEN $																														; If non-finite values are found
-		IF nGood GT N/2 THEN $																											; Only interpolate if there are non-finite values and if at least half the values are good
-			y[bad] = INTERPOL(y[good], x[good], x[bad]) $
-		ELSE $
-			MESSAGE, 'Too few good points (<1/2)...NO INTERPOLATION PERFORMED!', /CONTINUE
+	IF (nBad NE 0) AND (nGood GT N/2) THEN $																														; If non-finite values are found
+		y[bad] = INTERPOL(y[good], x[good], x[bad]); $
+		;ELSE $
+		;	MESSAGE, 'Too few good points (<1/2)...NO INTERPOLATION PERFORMED!', /CONTINUE
 ENDIF
 
 IF KEYWORD_SET(AUTOCOR) THEN Ns = KW_EFFECT_DOF(x, y, LEITH=Leith) ELSE Ns = N	; Set number of independent samples

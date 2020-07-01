@@ -1,0 +1,9 @@
+FUNCTION RANDOM_CHARS, n
+
+COMPILE_OPT IDL2
+
+chars = VALID_CHARS(/BYTES)
+
+RETURN, STRING( chars[ RANDOMU(seed, n) * chars.LENGTH ] )
+
+END

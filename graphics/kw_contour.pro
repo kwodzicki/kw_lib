@@ -172,6 +172,7 @@ extra = DICTIONARY(extra)
 ;IF N_TAGS(extra) GT 0 THEN extra_in = extra
 ;HELP, extra
 
+IF N_ELEMENTS(cbCharSize) EQ 0 THEN cbCharSize = 1.0
 zMin    = MIN(z, MAX = zMax, /NaN)                                           ; Get minimum and maximum of the data to plot
 z_type  = SIZE(z, /TYPE)                                                     ; Get the type of data to plot
 
@@ -359,18 +360,12 @@ IF (N_ELEMENTS(cbPos) EQ 0) THEN BEGIN                                          
   xChar = FLOAT(!D.X_CH_SIZE) / !D.X_VSIZE
   yChar = FLOAT(!D.Y_CH_SIZE) / !D.Y_VSIZE
   IF KEYWORD_SET(cbVertical) THEN BEGIN                                         ;If vertical color bar
-    IF KEYWORD_SET(box_axes) THEN $
-      off1 = (axes GT 0) ? 2.5*xChar : 0.5*xChar $                              ;Set x offsets for vertical color bar
-    ELSE $
-      off1 = xChar
+    off1 = (axes GT 0) ? 3.0*xChar : 0.9*xChar
     off2 = off1 + xChar*0.75
     cbPos= [position[1], position[2]+off1, $                                    ;Set default position vertical color bar
             position[3], position[2]+off2]
   ENDIF ELSE BEGIN
-    IF KEYWORD_SET(box_axes) THEN $
-      off1 = (axes GT 0) ? 1.5*yChar : 0.5*yChar $                              ;Set x offsets for vertical color bar
-    ELSE $
-      off1 = 2*yChar
+    off1 = (axes GT 0) ? 1.5*yChar : 0.5*yChar                               ;Set x offsets for vertical color bar
     off2 = off1 + yChar*0.5
     cbPos= [position[0], position[1]-off2, $                                    ;Set default position horizontal color bar
             position[2], position[1]-off1]
@@ -388,7 +383,8 @@ ncbLevels = N_ELEMENTS(cbLevels)
 
 tags_remove = ['FILL', 'CELL_FILL', 'BOX_AXES', 'ADVANCE', 'NLEVELS', $
                'TITLE', 'USA', 'LONDEL', 'LATDEL', 'LIMIT', 'ISOTROPIC', $
-               'CHARSIZE', 'IRREGULAR', 'COUNTRIES', 'CONTINENTS', 'OVERPLOT']
+               'CHARSIZE', 'IRREGULAR', 'COUNTRIES', 'CONTINENTS', 'OVERPLOT', $
+               'GLINESTYLE']
 FOREACH key, tags_remove DO $
   IF extra.HasKey( key ) THEN $
     extra.Remove, key
