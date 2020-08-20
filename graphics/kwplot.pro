@@ -44,11 +44,9 @@ IF N_PARAMS() EQ 1 THEN BEGIN																										; If only one (1) input
 	x = FINDGEN(N_ELEMENTS(y))																										; Generate x-values
 ENDIF
 
-x_ch = !D.X_CH_SIZE / FLOAT(!D.X_VSIZE)
-y_ch = !D.Y_CH_SIZE / FLOAT(!D.Y_VSIZE)
-;x_tick_len = -0.60 * y_ch
-x_tick_len = -0.80 * y_ch
-y_tick_len = -1.25 * x_ch
+UPDATE_XY_CH_SIZE
+x_tick_len = -0.80 * !Y_CH_SIZE
+y_tick_len = -1.25 * !X_CH_SIZE 
 ;IF N_TAGS(extra) GT 0 THEN $
 ;	IF TOTAL(STRMATCH(TAG_NAMES(extra), 'TITLE'), /INT) EQ 1 THEN $
 ;		extra.TITLE = extra.TITLE + '!C'
@@ -90,7 +88,7 @@ PLOT, x, y, POLAR = polar, $
 	NoErase    = KEYWORD_SET(overplot), $
   _EXTRA     = extra
 IF N_ELEMENTS(label) NE 0 THEN $
-	XYOUTS, position[0]+x_ch, position[3]-y_ch, $
+	XYOUTS, position[0]+!X_CH_SIZE, position[3]-!Y_CH_SIZE, $
 		label, color=0, /Normal
 
 IF KEYWORD_SET(polar) THEN BEGIN
@@ -138,9 +136,9 @@ IF ~KEYWORD_SET(no_axes) THEN $
 			yTickUnits = N_ELEMENTS(yTickUnits) GT 0 ? yTickUnits[0] : !NULL, $
 			yStyle = yStyle, yTickName = STRTRIM(FIX(r),2), $
 			_EXTRA = extra_new
-		XYOUTS, position[0]-2*y_ch, MEAN(position[1:*:2]), xTitle, ALIGNMENT=0.5, $
+		XYOUTS, position[0]-2*!Y_CH_SIZE, MEAN(position[1:*:2]), xTitle, ALIGNMENT=0.5, $
 			ORIENTATION=90, /NORMAL
-		XYOUTS, MEAN(position[0:*:2]), position[1]-2*x_ch, yTitle, ALIGNMENT=0.5, $
+		XYOUTS, MEAN(position[0:*:2]), position[1]-2*!X_CH_SIZE, yTitle, ALIGNMENT=0.5, $
 			/NORMAL
 	ENDELSE
 END

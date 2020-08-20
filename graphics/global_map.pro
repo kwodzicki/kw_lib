@@ -127,7 +127,7 @@ ENDIF ELSE BEGIN
                 LIMIT    = maplimit,   $
                 POSITION = position,   $
                 _EXTRA   = extra.ToStruct()
-    !P.POSITION = position
+    IF N_ELEMENTS(position) EQ 4 THEN !P.POSITION = position
   ENDIF ELSE BEGIN                                                    ;If not only setting map
     IF N_ELEMENTS(title) GT 0 THEN BEGIN
       xPos = (!P.position[0] + !P.position[2])/2.0

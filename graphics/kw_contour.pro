@@ -171,7 +171,9 @@ extra = DICTIONARY(extra)
 ;help, extra
 ;IF N_TAGS(extra) GT 0 THEN extra_in = extra
 ;HELP, extra
+UPDATE_XY_CH_SIZE																															; Update values for !X_CH_SIZE and !Y_CH_SIZE
 
+IF N_ELEMENTS(c_fill)     EQ 0 THEN c_fill     = 1B
 IF N_ELEMENTS(cbCharSize) EQ 0 THEN cbCharSize = 1.0
 zMin    = MIN(z, MAX = zMax, /NaN)                                           ; Get minimum and maximum of the data to plot
 z_type  = SIZE(z, /TYPE)                                                     ; Get the type of data to plot
@@ -343,7 +345,7 @@ ENDIF ELSE BEGIN
 		NLEVELS   = nLevels,             $
 		OVERPLOT  = overplot,            $
   	POSITION  = position,            $
-		CELL_FILL = KEYWORD_SET(map_on) OR KEYWORD_SET(c_fill), $
+		CELL_FILL = KEYWORD_SET(map_on) AND KEYWORD_SET(c_fill), $
 		_EXTRA    = extra.ToStruct()
 ENDELSE
 

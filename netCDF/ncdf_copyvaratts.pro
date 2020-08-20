@@ -24,6 +24,7 @@ IF N_PARAMS() LT 3 THEN MESSAGE, 'Incorrect number of inputs'									; If less 
 
 IF N_ELEMENTS(atts) EQ 0 THEN BEGIN																						; If no atts input
   varInfo = NCDF_VARINQ(srcID, varName)																				; Get information about variable
+  IF varInfo.NATTS EQ 0 THEN RETURN																						; If no attributes to copy, just return
   atts    = STRARR( varInfo.NATTS )																						; Create string array for number attribute names
   FOR i = 0, varInfo.NATTS-1 DO $																							; Iterate over all variable attributes
     atts[i] = NCDF_ATTNAME(srcID, varName, i)																	; Get attibute name
