@@ -1,6 +1,6 @@
 FUNCTION KW_LINFIT, xin, yin, $
 	RESIDUAL      = residual, $
-	YFIT          = yfit, $
+	YFIT          = yhat, $
 	CORRELATION   = corr, $
 	CONF_INT      = conf_int, $
 	CONF_VAL      = conf_val, $
@@ -86,29 +86,20 @@ ENDIF
 IF KEYWORD_SET(AUTOCOR) THEN Ns = KW_EFFECT_DOF(x, y, LEITH=Leith) ELSE Ns = N	; Set number of independent samples
 IF N_ELEMENTS(conf_int) EQ 0 THEN conf_int = 0.95
 
-sum_x  = TOTAL(x, /DOUBLE)  																										; Compute sum of x
-sum_y  = TOTAL(y, /DOUBLE)																											; Compute sum of y
-mean_x = sum_x / N																															; Compute mean of x
-mean_y = sum_y / N																															; Compute mean of y
+beta = REGRESS(x, y, CONST = alpha, YFIT = yHat, CORRELATION = corr)
 
-Sxx = TOTAL( (x - mean_x)^2, /DOUBLE )									  											; Compute Sxx as on page 493 of Devore and Farnum 2005
-Syy = TOTAL( (y - mean_y)^2, /DOUBLE )								  												; Compute total sum of squares
-Sxy = TOTAL(x * y) - sum_x * sum_y / N																					; Compute Sxy as on page 493 of Devore and Farnum 2005
+mean_x = MEAN(x)
+Sxx    = TOTAL( (x - mean_x)^2, /DOUBLE )
+SE     = SQRT( TOTAL( (y - yHat)^2, /DOUBLE ) / (Ns-2) ) / $
+         SQRT( Sxx )
 
-corr     = Sxy / (SQRT(Sxx) * SQRT(Syy))                                        ; Compute the Pearson's sample correlation
-beta     = Sxy / Sxx																														; Compute estimate of the slope
-alpha    = mean_y - beta * mean_x																								; Compute estimate of the y-intercept
 
-yfit     = alpha + beta * x																											; Compute fitted y values
-residual = y - yfit																															; Compute residuals of the fit
+residual = y - yhat																															; Compute residuals of the fit
 
 SSResid = TOTAL(residual^2, /DOUBLE)																						; Compute error sum of squares
 MSE     = SSResid / (Ns-2)																											; Compute mean square error
 MEr     = SQRT(MSE)																															; Compute mean error, i.e., square root of the mean square error
 
-CoD     = 1 - SSResid / Syy																											; Compute coefficient of determination
-CoD_adj = 1 - (1-CoD)*(N-1)/(N-2)
-SSRegr  = Syy - SSResid																													; Compute regression sum of squares
 
 beta_sig  = MEr / SQRT(Sxx)																											; Standard deviation for slope
 alpha_sig = MEr * SQRT(1.0/N + (mean_x)^2/Sxx)																	; Standard deviation for intercept
@@ -118,7 +109,8 @@ alpha_sig = MEr * SQRT(1.0/N + (mean_x)^2/Sxx)																	; Standard deviat
 ;alpha_t_stat = FIX( alpha / alpha_sig, TYPE = type)														; Compute t-statistic for the intercept
 IF Ns GT 2 THEN BEGIN
   corr_sig      = SIGNIF_TEST_R(conf_int*100.0, Ns)                               ; Compute r value for significance
-  beta_t_stat   = FIX( beta / beta_sig, TYPE = type)														  ; Compute t-statistic for the slope
+  ;beta_t_stat   = FIX( beta / beta_sig, TYPE = type)														  ; Compute t-statistic for the slope
+  beta_t_stat   = FIX( beta / SE, TYPE = type)														  ; Compute t-statistic for the slope
   alpha_t_stat  = FIX( alpha / alpha_sig, TYPE = type)														; Compute t-statistic for the intercept
   beta_p_val    = FIX( 2 - 2 * T_PDF(ABS(beta_t_stat), Ns-2), TYPE = type)				; Compute p-value for slope t-statistic
   alpha_p_val   = FIX( 2 - 2 * T_PDF(ABS(alpha_t_stat), Ns-2), TYPE = type)		  ; Compute p-value for intercept t-statistic
@@ -139,10 +131,10 @@ ENDELSE
 ;PRINT, beta, beta_p_val, bet a_conf_val;
 
 ;=== ANOVA
-MSRegr  = SSRegr
-MSResid = SSResid / (Ns - 2)
-F_stat  = MSRegr / MSResid
-Fp_val  = Ns GT 2 ? 1-F_PDF(F_stat, 1, Ns-2) : !Values.F_NaN
+;MSRegr  = SSRegr
+;MSResid = SSResid / (Ns - 2)
+;F_stat  = MSRegr / MSResid
+;Fp_val  = Ns GT 2 ? 1-F_PDF(F_stat, 1, Ns-2) : !Values.F_NaN
 
 ;=== VERBOSE testing
 IF KEYWORD_SET(verbose) THEN BEGIN
