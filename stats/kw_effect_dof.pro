@@ -28,36 +28,26 @@ IF (n NE N_ELEMENTS(y)) THEN $
 IF (n LT 2) THEN $
 	MESSAGE, "X and Y arrays must contain 2 or more elements."
 
-IF NOT KEYWORD_SET(Leith) THEN BEGIN
-;  cxx = MATLAB_XCORR(x, x, SCALEOPT = 'COEFF', /COVARIANCE)							  ; Compute auto-covariance of x 
-;  cyy = MATLAB_XCORR(y, y, SCALEOPT = 'COEFF', /COVARIANCE)							  ; Compute auto-covariance of x
-;  cxy = MATLAB_XCORR(x, y, SCALEOPT = 'COEFF', /COVARIANCE)							  ; Compute cross-covariance of x and y
-  varx  = VARIANCE(x)
-  vary  = VARIANCE(y)
-  cxx   = KW_XCORR(x, x, SCALEOPT = 'COEFF', /COVARIANCE) 						  ; Compute auto-covariance of x 
-  cyy   = KW_XCORR(y, y, SCALEOPT = 'COEFF', /COVARIANCE) 						  ; Compute auto-covariance of x
-  cxy   = KW_XCORR(x, y, SCALEOPT = 'COEFF', /COVARIANCE) 						  ; Compute cross-covariance of x and y
-  ;denom = TOTAL( (cxx * cyy + cxy * REVERSE(cxy))/(varx*vary) )
+IF ~KEYWORD_SET(Leith) THEN BEGIN
+;  cxx   = KW_XCORR(x, x, SCALEOPT = 'COEFF', /COVARIANCE) 						  ; Compute auto-covariance of x 
+;  cyy   = KW_XCORR(y, y, SCALEOPT = 'COEFF', /COVARIANCE) 						  ; Compute auto-covariance of x
+;  cxy   = KW_XCORR(x, y, SCALEOPT = 'COEFF', /COVARIANCE) 						  ; Compute cross-covariance of x and y
+;  denom = TOTAL( cxx * cyy + cxy * REVERSE(cxy) )
+;  varx  = VARIANCE(x)
+;  vary  = VARIANCE(y)
+;  lags  = INDGEN( n * 2 - 1 ) - (n-1)
+;  cxx   = KW_XCORR(x, x, SCALEOPT='UNBIASED', /COVARIANCE) 						  ; Compute auto-covariance of x 
+;  cyy   = KW_XCORR(y, y, SCALEOPT='UNBIASED', /COVARIANCE) 						  ; Compute auto-covariance of x
+;  cxy   = KW_XCORR(x, y, SCALEOPT='UNBIASED', /COVARIANCE) 						  ; Compute cross-covariance of x and y
+;  cxx   = C_CORRELATE(x, x, lags, /COVARIANCE) 						  ; Compute auto-covariance of x 
+;  cyy   = C_CORRELATE(y, y, lags, /COVARIANCE) 						  ; Compute auto-covariance of x
+;  cxy   = C_CORRELATE(x, y, lags, /COVARIANCE) 						  ; Compute cross-covariance of x and y
+;  denom = TOTAL( (cxx * cyy + cxy * REVERSE(cxy))/(varx*vary) )
+  cxx   = KW_XCORR(x, x, SCALEOPT='COEFF', /COVARIANCE) 						  ; Compute auto-covariance of x 
+  cyy   = KW_XCORR(y, y, SCALEOPT='COEFF', /COVARIANCE) 						  ; Compute auto-covariance of x
+  cxy   = KW_XCORR(x, y, SCALEOPT='COEFF', /COVARIANCE) 						  ; Compute cross-covariance of x and y
   denom = TOTAL( cxx * cyy + cxy * REVERSE(cxy) )
   IF denom LT 1.0 THEN RETURN, !Values.F_NaN ELSE RETURN, n / denom
-;  cxx = MATLAB_XCORR(x, x, /COVARIANCE)                                                   ; Compute auto-covariance of x 
-;  cyy = MATLAB_XCORR(y, y, /COVARIANCE)                                                   ; Compute auto-covariance of x
-;  cxy = MATLAB_XCORR(x, y, /COVARIANCE)                                                   ; Compute cross-covariance of x and y
-;  RETURN, n / TOTAL( (cxx * cyy + cxy * REVERSE(cxy)) / (VARIANCE(x) * VARIANCE(y)) )                     ; Return effective degrees of freedom; 
-;  varx = VARIANCE(x)
-;  vary = VARIANCE(y)
-;  cxx = MATLAB_XCORR(x, x, SCALEPLOT = 'coeff', /COVARIANCE) / varx                       ; Compute auto-covariance of x 
-;  cyy = MATLAB_XCORR(y, y, SCALEPLOT = 'coeff', /COVARIANCE) / vary                       ; Compute auto-covariance of x
-;  cxy = MATLAB_XCORR(x, y, SCALEPLOT = 'coeff', /COVARIANCE)                              ; Compute cross-covariance of x and y
-;  cyx = MATLAB_XCORR(y, x, SCALEPLOT = 'coeff', /COVARIANCE)
-;  RETURN, n / TOTAL( cxx*cyy + cxy * cyx / (varx * vary) )                                ; Return effective degrees of freedom; 
-;  varx = VARIANCE(x)
-;  vary = VARIANCE(y)
-;  cxx = MATLAB_XCORR(x, x, /COVARIANCE) / varx                                            ; Compute auto-covariance of x 
-;  cyy = MATLAB_XCORR(y, y, /COVARIANCE) / vary                                            ; Compute auto-covariance of x
-;  cxy = MATLAB_XCORR(x, y, /COVARIANCE)                                                   ; Compute cross-covariance of x and y
-;  cyx = MATLAB_XCORR(y, x, /COVARIANCE)
-;  RETURN, n / TOTAL( cxx*cyy + cxy * cyx / (varx * vary) )                                ; Return effective degrees of freedom; 
 ENDIF ELSE BEGIN
   a_cor = MATLAB_XCORR(y, y, SCALEOPT = 'coeff', /COVARIANCE)
   id = WHERE(a_cor[n-1:*] LT (1.0/EXP(1)), CNT)

@@ -1,4 +1,7 @@
-FUNCTION NCDF_VARCREATE, Cdfid, Name, dim, TYPE=type, _EXTRA=_extra
+FUNCTION NCDF_VARCREATE, Cdfid, Name, dim, $
+  TYPE    = type, $
+  NO_FILL = no_fill, $
+  _EXTRA  = _extra
 ;+
 ; Name:
 ;   NCDF_VARCREATE
@@ -13,6 +16,7 @@ FUNCTION NCDF_VARCREATE, Cdfid, Name, dim, TYPE=type, _EXTRA=_extra
 ;           This can be list of strings specifing dimension names as well.
 ; Keywords:
 ;   TYPE    : IDL data type code or type string for netCDF variable type.
+;   NO_FILL : Set to disable default filling
 ;   _EXTRA  : All other keywords (except data type keys) accepted by NCDF_VARDEF
 ; Returns:
 ;   Same as NCDF_VARDEF
@@ -39,13 +43,13 @@ IF ISA(varType, 'STRING') THEN $																							; If varType is string
     'INT'     : varType =  2
     'UINT'    : varType = 12
     'LONG'    : varType =  3
-    'ULONG'   : varType = 14
+    'ULONG'   : varType = 13
     'ULONG64' : varType = 15
     'FLOAT'   : varType =  4
     'DOUBLE'  : varType =  5
   ENDCASE
 
-RETURN, NCDF_VARDEF(Cdfid, Name, dimIDs, _EXTRA = _extra, $										; Create the variable in the netCDF file and return the ID
+vid = NCDF_VARDEF(Cdfid, Name, dimIDs, _EXTRA = _extra, $										; Create the variable in the netCDF file and return the ID
   UBYTE  = varType EQ  1, $
   SHORT  = varType EQ  2, $
   USHORT = varType EQ 12, $
@@ -55,5 +59,28 @@ RETURN, NCDF_VARDEF(Cdfid, Name, dimIDs, _EXTRA = _extra, $										; Create th
   FLOAT  = varType EQ  4, $
   DOUBLE = varType EQ  5, $
   STRING = varType EQ  8) 
+
+IF ~KEYWORD_SET(no_fill) THEN BEGIN
+  CASE varType OF
+     1   : fill = !NCDF_FILL.BYTE
+     2   : fill = !NCDF_FILL.SHORT
+     3   : fill = !NCDF_FILL.LONG
+    13   : fill = !NCDF_FILL.ULONG
+     4   : fill = !NCDF_FILL.FLOAT
+     5   : fill = !NCDF_FILL.DOUBLE
+    ELSE : fill = !NULL
+  ENDCASE
+  IF N_ELEMENTS(fill) EQ 1 THEN $
+    NCDF_ATTPUT, Cdfid, vid, '_FillValue', fill, $
+      UBYTE  = varType EQ  1, $
+      SHORT  = varType EQ  2, $
+      LONG   = varType EQ  3, $
+      ULONG  = varType EQ 13, $
+      FLOAT  = varType EQ  4, $
+      DOUBLE = varType EQ  5
+
+ENDIF
+
+RETURN, vid
 
 END

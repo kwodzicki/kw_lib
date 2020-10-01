@@ -1,4 +1,4 @@
-FUNCTION FILE_SPLITEXT, file
+PRO FILE_SPLITEXT, file, base, ext
 ;+
 ; Name:
 ;   FILE_SPLITEXT
@@ -26,9 +26,7 @@ IF (tmp[0] NE '' AND tmp.LENGTH GT 1) OR (tmp[0] EQ '' AND tmp.LENGTH GT 2) THEN
   ext  = '.' + tmp[-1]
 ENDIF
 
-IF (dir EQ '.') THEN $
-  RETURN, [base, ext] $
-ELSE $
-  RETURN, [FILEPATH(base,  ROOT_DIR=dir), ext]
+IF (dir NE '.') THEN $
+  base = FILEPATH(base,  ROOT_DIR=dir)
 
 END

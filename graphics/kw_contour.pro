@@ -19,6 +19,7 @@ PRO KW_CONTOUR, in1, in2, in3, in4, $
       CBFORMAT     = cbFormat,     $
       CBXLOG       = cbXLog,       $
       CBYLOG       = cbYLog,       $
+      CBROTLABELS  = cbRotLabels,  $
       LABEL_UNDER  = label_under,  $
       BOTTOM       = bottom,       $
       MAP_ON       = map_on,       $
@@ -227,6 +228,7 @@ IF (N_ELEMENTS(rgb_colors) EQ 0) THEN BEGIN                                     
 	IF (N_ELEMENTS(color_table) EQ 0) THEN color_table = 33                       ; IF not color table is defined by the user, set the default table to 33
 	LOADCT, color_table, NCOLORS = nLevels, BOTTOM=bottom, FILE = ct_File, $      ; Load the color table silently
 		RGB_TABLE = rgb_colors, /SILENT
+  IF KEYWORD_SET(ctReverse) THEN rgb_colors = REVERSE(rgb_colors, 1)
 	IF (N_ELEMENTS(oob_low_col) NE 0) AND OOB_LOW EQ 1 THEN $                     ; IF the user specified an OOB_LOW color
 		IF (N_ELEMENTS(oob_low_col) EQ 3) THEN $                                    ; IF it is an RGB array
 			rgb_colors[0,*] = oob_low_col $                                           ; Set first element of RGB arrays to the RGB values of the OOB_LOW color
@@ -269,7 +271,7 @@ ENDIF ELSE BEGIN
 		 rgb_colors[-1,*] = [127, 0, 127]                                           ; Set to OOB_HIGH color to PURPLE
 ENDELSE
 
-IF KEYWORD_SET(ctReverse) THEN rgb_colors = REVERSE(rgb_colors, 1)
+;IF KEYWORD_SET(ctReverse) THEN rgb_colors = REVERSE(rgb_colors, 1)
 c_colors = COLOR_24(rgb_colors[*,0],rgb_colors[*,1],rgb_colors[*,2])
 
 oob_low  = (oob_low  EQ 1) ? REFORM(rgb_colors[ 0,*]) : !NULL
@@ -383,7 +385,7 @@ IF (N_ELEMENTS(cbLabels) EQ 0) THEN $
 			cbLabels = STRTRIM(cbLevels, 2)
 ncbLevels = N_ELEMENTS(cbLevels)
 
-tags_remove = ['FILL', 'CELL_FILL', 'BOX_AXES', 'ADVANCE', 'NLEVELS', $
+tags_remove = ['FILL', 'CELL_FILL', 'LABEL_AXES', 'BOX_AXES', 'ADVANCE', 'NLEVELS', $
                'TITLE', 'USA', 'LONDEL', 'LATDEL', 'LIMIT', 'ISOTROPIC', $
                'CHARSIZE', 'IRREGULAR', 'COUNTRIES', 'CONTINENTS', 'OVERPLOT', $
                'GLINESTYLE']
@@ -398,16 +400,30 @@ IF (N_ELEMENTS(oob_low)  GT 0) OR (N_ELEMENTS(oob_high) GT 0) THEN $
   rgb_colors = rgb_colors[1:-2, *]
 
 IF KEYWORD_SET(colorbar) THEN $
-  IF KEYWORD_SET(label_under) THEN $
+  IF KEYWORD_SET(label_under) THEN BEGIN
+    IF N_ELEMENTS(oob_low) EQ 0 AND N_ELEMENTS(oob_high) EQ 0 THEN BEGIN
+        cbLabels = cbLabels[1:-2]
+    ENDIF ELSE BEGIN
+      IF N_ELEMENTS(oob_low) EQ 0 THEN BEGIN
+        c_colors = c_colors[1:*]
+        cbLabels = cbLabels[1:*]
+      ENDIF
+      IF N_ELEMENTS(oob_high) EQ 0 THEN BEGIN
+        c_colors = c_colors[0:-2]
+        cbLabels = cbLabels[0:-2]
+      ENDIF
+    ENDELSE
+
     cgDCBar, c_colors, $
+      ROTATE    = cbRotLabels, $
       SPACING   = 0.5, $
       Position  = cbPos,      $
       TITLE     = cbTitle,    $
       VERTICAL  = cbVertical, $
       RIGHT     = cbRight,    $
       CHARSIZE  = cbCharsize, $
-      LABELS    = cbLabels $
-  ELSE $
+      LABELS    = cbLabels 
+  ENDIF ELSE $
     cgColorbar, $
       DISCRETE  = discrete,   $
       RANGE     = cbRange,     $

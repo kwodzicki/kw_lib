@@ -18,4 +18,6 @@ ysize = (N_ELEMENTS(ysize) EQ 1) ? ysize * !X11_DPI : !D.Y_VSIZE
 
 WINDOW, window_index, XSIZE = xsize, YSIZE = ysize, _EXTRA = extra.ToStruct()
 
+!X_CH_SIZE = !D.X_CH_SIZE / FLOAT(!D.X_VSIZE)
+!Y_CH_SIZE = !D.Y_CH_SIZE / FLOAT(!D.Y_VSIZE)
 END

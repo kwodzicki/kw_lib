@@ -25,7 +25,7 @@ COMPILE_OPT IDL2
 
 sl2 = (1 - sl/1.0D2)/2.0D0
 
-RETURN, [ [ val * dof / CHISQR_CVF(sl2, dof)], $
+RETURN, [ [ val * dof / CHISQR_CVF(  sl2, dof)], $
 					[ val * dof / CHISQR_CVF(1-sl2, dof)] ]
 
 

@@ -1,0 +1,7 @@
+FUNCTION KW_LOG, val, base
+
+COMPILE_OPT IDL2
+
+RETURN, ALOG10(val)/ALOG10(base)
+
+END

@@ -86,8 +86,8 @@ ENDIF
 IF KEYWORD_SET(AUTOCOR) THEN Ns = KW_EFFECT_DOF(x, y, LEITH=Leith) ELSE Ns = N	; Set number of independent samples
 IF N_ELEMENTS(conf_int) EQ 0 THEN conf_int = 0.95
 
-beta = REGRESS(x, y, CONST = alpha, YFIT = yHat, CORRELATION = corr)
-
+beta   = REGRESS(x, y, CONST = alpha, YFIT = yHat, CORRELATION = corr)
+yHat   = REFORM(yhat)
 mean_x = MEAN(x)
 Sxx    = TOTAL( (x - mean_x)^2, /DOUBLE )
 SE     = SQRT( TOTAL( (y - yHat)^2, /DOUBLE ) / (Ns-2) ) / $
