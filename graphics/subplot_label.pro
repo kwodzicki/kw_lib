@@ -1,4 +1,8 @@
-PRO SUBPLOT_LABEL, position, label, RIGHT=right, BOTTOM=bottom, _EXTRA=_extra
+PRO SUBPLOT_LABEL, position, label, $
+  RIGHT   = right, $
+  BOTTOM  = bottom,$
+  ABOVE   = above, $
+   _EXTRA = _extra
 ;+
 ; Name:
 ;   SUBPLOT_LABEL
@@ -29,7 +33,8 @@ ENDELSE
 IF KEYWORD_SET(bottom) THEN BEGIN
   y = position[1]+!Y_CH_SIZE * extra['charsize']
 ENDIF ELSE BEGIN
-  y = position[3]-1.5*!Y_CH_SIZE * extra['charsize']
+  o = !Y_CH_SIZE * extra['charsize']
+  y = position[3] + (KEYWORD_SET(above) ? o*0.5 : -o*1.5)
 ENDELSE
     
 XYOUTS, x, y, label, _EXTRA = extra.ToStruct()

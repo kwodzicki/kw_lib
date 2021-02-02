@@ -1,0 +1,7 @@
+FUNCTION LaTeXMath, str
+COMPILE_OPT IDL2
+
+
+
+
+END

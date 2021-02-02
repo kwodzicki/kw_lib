@@ -22,9 +22,10 @@ COMPILE_OPT IDL2
 JUL2GREG, date, mm, dd, yy
   
 mm += 1
-IF mm EQ 13 THEN BEGIN
-  yy += 1
-  mm  = 1
+id = WHERE(mm EQ 13, cnt)
+IF cnt GT 0 THEN BEGIN
+  yy[id] += 1
+  mm[id]  = 1
 ENDIF
 
 RETURN, GREG2JUL(mm, 1, yy, 0, 0, 0)

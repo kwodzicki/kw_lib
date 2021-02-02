@@ -1,4 +1,6 @@
-PRO ANNUALIZE, years, data0, data1, data2, data3, data4, data5, data6, data7, $
+PRO ANNUALIZE, yearsIn, data0, data1, data2, data3, data4, data5, data6, data7, $
+  OUTDATES  = outdates, $
+  GREGORIAN = gregorian, $
   _EXTRA = _extra
 ;+
 ; Name:
@@ -11,6 +13,8 @@ PRO ANNUALIZE, years, data0, data1, data2, data3, data4, data5, data6, data7, $
 ;   data   : Data to annualize, allows for eight (8) inputs to speed-up 
 ;               processing.
 ; Keywords:
+;   OUTDATES  : Set to named variable to return yearly dates into
+;   GREGORIAN : Set if the yearsIn data are GREGORIAN (or julian) IDL dates
 ;   _EXTRA : Any keywords accepted by MEAN() function
 ; Author and History:
 ;   Kyle R. Wodzicki
@@ -31,7 +35,13 @@ CASE nArgs OF
   9 : data = LIST(data0, data1, data2, data3, data4, data5, data6, data7)
 ENDCASE
 
+IF KEYWORD_SET(gregorian) THEN $
+  JUL2GREG, yearsIn, mm, dd, years $
+ELSE $
+  years = yearsIn 
+
 uniqYears = years[UNIQ(years, SORT(years))]
+outdates  = GREG2JUL(1, 1, uniqYears, 0)
 
 out = LIST()
 FOR i = 0, N_ELEMENTS(data)-1 DO out.ADD, LIST()
@@ -40,7 +50,7 @@ extra = DICTIONARY(_extra, /EXTRACT)
 
 FOR i = 0, N_ELEMENTS(uniqYears)-1 DO BEGIN
   id = WHERE(years EQ uniqYears[i], cnt)
-  IF cnt GT 0 THEN $
+  IF cnt GT 10 THEN $
     FOR j = 0, N_ELEMENTS(data)-1 DO $
       IF extra.HasKey('DIMENSION') THEN $
         CASE extra['DIMENSION'] OF

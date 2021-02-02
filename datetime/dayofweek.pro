@@ -23,7 +23,8 @@ m = m[mm-1]
 c = FLOOR(yy/100.0)
 y = yy - c * 100
 
-IF mm LT 3 THEN y -= 1
+id = WHERE(mm LT 3, cnt)
+IF cnt GT 0 THEN y[id] -= 1
 
 RETURN, (dd + FLOOR(2.6 * m - 0.2) - 2*c + y + FLOOR(y/4) + FLOOR(c/4)) MOD 7
 

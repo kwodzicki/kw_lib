@@ -8,7 +8,7 @@
 FUNCTION KW_Object::INIT
   ; Initialize class 
   COMPILE_OPT IDL2
-
+  void = self->IDL_Object::Init()
   self.__dict__ = HASH()																											; Initialize hash in the __dict__ key
   RETURN, OBJ_VALID(self.__dict__)																						; Return 1 if object valid
 END

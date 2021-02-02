@@ -17,7 +17,7 @@ FUNCTION COMPUTE_SCALE_OFFSET, data, n, $
 ; Keywords:
 ;   N_MISSING : Set to the number of values to reserve for missing/fill data. 
 ;                Values are reserved starting at minimum values and working up, 
-;                i.e., for 16-bit scaling and one missing, -32768 is reserved.
+;                i.e., for 16-bit scaling and one missing, -32767 is reserved.
 ;  DOUBLE     : Set to force scale and add values computed in double precision.
 ;                Default is single precision, unless the input data is double
 ;                precision, then scale and add values are double precision.

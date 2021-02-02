@@ -10,7 +10,8 @@ PRO MINI_MAP, maplimit, position, $
    COLOR       = color,       $
    USA         = usa,         $
    COUNTRIES   = countries,   $
-   CHARSIZE    = charsize
+   CHARSIZE    = charsize,    $
+   _EXTRA      = _extra
 ;+
 ; Name:
 ;   MINI_MAP
@@ -78,9 +79,11 @@ ENDELSE
 ;=== Set up the position of the mini map in the graphics window                            
 pos = [0.0, 0.0, 0.0, 0.0]
 IF KEYWORD_SET(right) THEN BEGIN
-  pos[2] = position[2]-xy_ch & pos[0] = pos[2] - x_zoom
+  pos[2] = position[2]-xy_ch
+  pos[0] = pos[2] - x_zoom
 ENDIF ELSE BEGIN
-  pos[0] = position[0]+xy_ch & pos[2] = pos[0] + x_zoom
+  pos[0] = position[0]+xy_ch
+  pos[2] = pos[0] + x_zoom
 ENDELSE
 
 IF KEYWORD_SET(top) THEN BEGIN
@@ -98,23 +101,25 @@ y      = [pos[1], pos[3], pos[3], pos[1], pos[1]]
 y_1    = [-2, 2, 2, -2, -2] * offset
 
 ;=== Plot the white background
-POLYFILL, x + x_1, y + y_1, COLOR=!D.N_COLORS-1, /NORMAL
+;POLYFILL, x + x_1, y + y_1, COLOR=!D.N_COLORS-1, /NORMAL
+POLYFILL, x + x_1, y + y_1, COLOR=!P.BACKGROUND, /NORMAL
 
 ;=== Plot the mini map over the white background
-MAP_SET, 0.0, longitude, /ADVANCE, $
+MAP_SET, 0.0, longitude, $
           NAME     = projection,   $
           LIMIT    = lim,          $
           POSITION = pos,          $
-          CHARSIZE = charsize
+          CHARSIZE = charsize, $
+          _EXTRA   = _extra
 MAP_CONTINENTS, /OVERPLOT, /CONTINENTS, $
           USA       = usa,              $
           COUNTRIES = countries,        $
-          COLOR     = 0  
+          COLOR     = !P.COLOR 
 MAP_GRID, LATDEL   = latDel,   $
           LONDEL   = lonDel,   $
           CHARSIZE = charsize, $
           BOX_AXES = box_axes, $
-          COLOR    = 0,        $
+          COLOR    = !P.COLOR,        $
           /COUNTRIES,          $
           /LABEL
 

@@ -37,6 +37,8 @@ PRO KW_CONTOUR, in1, in2, in3, in4, $
       OOB_LOW      = oob_low_col,  $
       OOB_HIGH     = oob_high_col, $
       C_FILL       = c_fill,       $
+      V_THICK      = v_thick,      $
+      V_LENGTH     = v_length,     $
       _EXTRA       = extra
 ; Name:
 ;   KW_CONTOUR
@@ -220,14 +222,23 @@ lvl_min = MIN(levels_flt, MAX = lvl_max, /NaN)                                  
 
 OOB_LOW   = (zMin LT lvl_min) OR (N_ELEMENTS(oob_low_col)  GT 0)
 OOB_HIGH  = (zMax GT lvl_max) OR (N_ELEMENTS(oob_high_col) GT 0)
-IF OOB_LOW OR OOB_HIGH THEN $
-  levels_flt = [ MIN([zMin, lvl_min])-1.0, levels_flt, MAX([zMax, lvl_max])+1.0]
+IF OOB_LOW OR OOB_HIGH THEN BEGIN
+  dl         = levels_flt[1] - levels_flt[0]
+  levels_flt = [ MIN([zMin, lvl_min])-dl, levels_flt ]
+  dl         = levels_flt[-1] - levels_flt[-2]
+  levels_flt = [levels_flt, MAX([zMax, lvl_max])+ dl]
+ENDIF
+
 nLevels   = N_ELEMENTS(levels_flt)-1																							; Set the number of levels for contouring. This is the same as the number of colors to load
 
 IF (N_ELEMENTS(rgb_colors) EQ 0) THEN BEGIN                                     ; IF no RGB color table was explicitly entered
 	IF (N_ELEMENTS(color_table) EQ 0) THEN color_table = 33                       ; IF not color table is defined by the user, set the default table to 33
-	LOADCT, color_table, NCOLORS = nLevels, BOTTOM=bottom, FILE = ct_File, $      ; Load the color table silently
-		RGB_TABLE = rgb_colors, /SILENT
+  IF (N_ELEMENTS(color_table) EQ 2) THEN $
+    LOADNCLCT, color_table[0], color_table[1], NCOLORS=nLevels, BOTTOM=bottom, $      ; Load the color table silently
+	  	RGB_TABLE = rgb_colors, /SILENT $
+  ELSE $
+	  LOADCT, color_table, NCOLORS = nLevels, BOTTOM=bottom, FILE = ct_File, $      ; Load the color table silently
+	  	RGB_TABLE = rgb_colors, /SILENT
   IF KEYWORD_SET(ctReverse) THEN rgb_colors = REVERSE(rgb_colors, 1)
 	IF (N_ELEMENTS(oob_low_col) NE 0) AND OOB_LOW EQ 1 THEN $                     ; IF the user specified an OOB_LOW color
 		IF (N_ELEMENTS(oob_low_col) EQ 3) THEN $                                    ; IF it is an RGB array
@@ -313,7 +324,8 @@ IF N_PARAMS() EQ 4 THEN BEGIN
 		ENDIF
 		VELOVECT, tmp_u, tmp_v, x, y, $
 			COLOR    = c_colors[i], $
-			THICK    = thick,     $
+			THICK    = v_thick,     $
+      LENGTH   = v_length, $
 			OVERPLOT = KEYWORD_SET(map_on),  $
 			MISSING  = missingvalue;, $
 ;			_EXTRA   = extra
@@ -359,10 +371,11 @@ IF KEYWORD_SET(map_on) THEN $                                                   
     _EXTRA     = extra.ToStruct()
 
 ;=== Determine if BOX_AXES or LABEL_AXES is set
-axes = extra.HasKey('BOX_AXES') + extra.HasKey('LABEL_AXES');TOTAL(STRMATCH(extra_tags,'BOX_AXES')+STRMATCH(extra_tags,'LABEL_AXES'),/INT)
+axes     = extra.HasKey('BOX_AXES') + extra.HasKey('LABEL_AXES');TOTAL(STRMATCH(extra_tags,'BOX_AXES')+STRMATCH(extra_tags,'LABEL_AXES'),/INT)
+charsize = extra.HasKey('CHARSIZE') ? extra['CHARSIZE'] : 1.0
 IF (N_ELEMENTS(cbPos) EQ 0) THEN BEGIN                                          ; IF a location for the color bar is NOT specified
-  xChar = FLOAT(!D.X_CH_SIZE) / !D.X_VSIZE
-  yChar = FLOAT(!D.Y_CH_SIZE) / !D.Y_VSIZE
+  xChar = !X_CH_SIZE * charsize
+  yChar = !Y_CH_SIZE * charsize
   IF KEYWORD_SET(cbVertical) THEN BEGIN                                         ;If vertical color bar
     off1 = (axes GT 0) ? 3.0*xChar : 0.9*xChar
     off2 = off1 + xChar*0.75

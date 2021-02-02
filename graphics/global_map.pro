@@ -74,14 +74,14 @@ COMPILE_OPT IDL2, HIDDEN                                              ;Set compi
 !P.BACKGROUND = !D.N_COLORS-1
 !P.COLOR      = 0
 
-xChar = FLOAT(!D.X_CH_SIZE) / !D.X_VSIZE
-yChar = FLOAT(!D.Y_CH_SIZE) / !D.Y_VSIZE
 
 extra = DICTIONARY(_extra)																										; Convert _extra to dictionary
 IF extra.HasKey('TITLE')      EQ 1 THEN title = extra.Remove('TITLE')				; If 'TITLE' key exists, remove it and store locally
 IF extra.HasKey('CONTINENTS') EQ 0 THEN extra['CONTINENTS'] = 1							; If 'CONTINENTS' not found in dictionary, set to one (1); i.e., enabled
 IF extra.HasKey('LATDEL')     EQ 0 THEN extra['LATDEL']     = 15.0
 IF extra.HasKey('LONDEL')     EQ 0 THEN extra['LONDEL']     = 30.0
+
+charsize = extra.HasKey('CHARSIZE') ? extra['CHARSIZE'] : 1.0
 
 ;=== Filter out keywords that my cause duplicate keyword errors.
 FOREACH key, extra.Keys() DO $																							; Iterate over all keys
@@ -131,12 +131,10 @@ ENDIF ELSE BEGIN
   ENDIF ELSE BEGIN                                                    ;If not only setting map
     IF N_ELEMENTS(title) GT 0 THEN BEGIN
       xPos = (!P.position[0] + !P.position[2])/2.0
-      ;yPos =  !P.position[3] + 0.25 * yChar
-      yPos =  !P.position[3] + 0.5 * yChar
+      yPos =  !P.position[3] + 0.5 * !Y_CH_SIZE * charsize
       IF extra.HasKey('BOX_AXES') EQ 1 THEN $
         IF KEYWORD_SET(extra['BOX_AXES']) THEN $
-          yPos += 1.5 * yChar
-          ;yPos += 1.25 * yChar
+          yPos += 1.5 * !Y_CH_SIZE * charsize
       XYOUTS, xPos, yPos, title, ALIGNMENT=0.5, CHARSIZE=1.25, $
         COLOR = !P.COLOR, /NORMAL
     ENDIF
@@ -145,13 +143,13 @@ ENDIF ELSE BEGIN
 			 _EXTRA  = extra.ToStruct()
     IF KEYWORD_SET(label_axes) THEN BEGIN
       AXIS, xAxis=0, xRANGE=maplimit[1:*:2], xTickInterval=extra.LONDEL, $
-        xSTYLE=1, xTickLen=-1*yChar/2, CHARSIZE = charsize, COLOR=0, _EXTRA = extra.ToStruct()
+        xSTYLE=1, xTickLen=-1*!Y_CH_SIZE/2, CHARSIZE = charsize, COLOR=0, _EXTRA = extra.ToStruct()
       AXIS, xAxis=1, xRANGE=maplimit[1:*:2], xTickInterval=extra.LONDEL, $
-        xSTYLE=1, xTickLen=-1*yChar/2, CHARSIZE = charsize, COLOR=0, xTickFormat="(A1)"
+        xSTYLE=1, xTickLen=-1*!Y_CH_SIZE/2, CHARSIZE = charsize, COLOR=0, xTickFormat="(A1)"
       AXIS, yAxis=0, yRANGE=maplimit[0:*:2], yTickInterval=extra.LATDEL, $
-        ySTYLE=1, yTickLen=-1*xChar, CHARSIZE = charsize, COLOR=0, _EXTRA = extra.ToStruct()
+        ySTYLE=1, yTickLen=-1*!X_CH_SIZE, CHARSIZE = charsize, COLOR=0, _EXTRA = extra.ToStruct()
       AXIS, yAxis=1, yRANGE=maplimit[0:*:2], yTickInterval=extra.LATDEL, $
-        ySTYLE=1, yTickLen=-1*xChar, CHARSIZE = charsize, COLOR=0, yTickFormat="(A1)"
+        ySTYLE=1, yTickLen=-1*!X_CH_SIZE, CHARSIZE = charsize, COLOR=0, yTickFormat="(A1)"
     ENDIF ELSE $
      MAP_GRID, /LABEL, COLOR = grid_color, _EXTRA = extra.ToStruct()
   ENDELSE

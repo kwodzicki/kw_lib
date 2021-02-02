@@ -1,4 +1,5 @@
 FUNCTION KW_LINFIT, xin, yin, $
+  DETREND       = detrend, $
 	RESIDUAL      = residual, $
 	YFIT          = yhat, $
 	CORRELATION   = corr, $
@@ -7,6 +8,7 @@ FUNCTION KW_LINFIT, xin, yin, $
 	AUTOCOR       = autocor, $
 	LEITH         = Leith, $
 	LININTERP     = lininterp, $
+  MEANINTERP    = meaninterp, $
 	ALPHA_P_VAL	  = alpha_p_val, $
 	BETA_P_VAL    = beta_p_val, $
 	BETA_CONF_VAL = beta_conf_val, $
@@ -67,6 +69,8 @@ IF (N_PARAMS() NE 2) THEN MESSAGE, 'Incorrect number of inputs!'								; Check 
 IF N_ELEMENTS(xin) NE N_ELEMENTS(yin) THEN MESSAGE, 'N-elements of inputs differ!'
 N = N_ELEMENTS(xin)																															; Number of elements in input array
 
+detrend = (N_ELEMENTS(detrend) EQ 0) ? 'NONE' : STRUPCASE(detrend)
+
 ; Convert inputs to correct type based on keyword
 type = KEYWORD_SET(double) ? 5 : 4
 IF SIZE(xin, /TYPE) EQ 5 OR SIZE(yin, /TYPE) EQ 5 THEN type = 5
@@ -81,11 +85,24 @@ IF KEYWORD_SET(lininterp) THEN BEGIN
 		y[bad] = INTERPOL(y[good], x[good], x[bad]); $
 		;ELSE $
 		;	MESSAGE, 'Too few good points (<1/2)...NO INTERPOLATION PERFORMED!', /CONTINUE
+ENDIF ELSE IF KEYWORD_SET(meaninterp) THEN BEGIN
+	good = WHERE(FINITE(yin), nGood, COMPLEMENT=bad, NCOMPLEMENT=nBad)						; Locate all finite and non-finite values
+  IF (nBad NE 0) AND (ngood GT N/2) THEN y[bad] = MEAN(y[good])
+ENDIF
+
+IF detrend EQ 'BOTH' or detrend EQ 'X' THEN BEGIN
+  _ = REGRESS(FINDGEN(x.LENGTH), x, YFIT=yfit)
+  x -= yfit
+ENDIF
+IF detrend EQ 'BOTH' or detrend EQ 'Y' THEN BEGIN
+  _ = REGRESS(FINDGEN(y.LENGTH), y, YFIT=yfit)
+  y -= yfit
 ENDIF
 
 IF KEYWORD_SET(AUTOCOR) THEN Ns = KW_EFFECT_DOF(x, y, LEITH=Leith) ELSE Ns = N	; Set number of independent samples
 IF N_ELEMENTS(conf_int) EQ 0 THEN conf_int = 0.95
 
+Ns     = Ns > 3
 beta   = REGRESS(x, y, CONST = alpha, YFIT = yHat, CORRELATION = corr)
 yHat   = REFORM(yhat)
 mean_x = MEAN(x)
