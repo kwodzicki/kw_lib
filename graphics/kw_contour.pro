@@ -365,9 +365,11 @@ ENDELSE
 
 IF KEYWORD_SET(map_on) THEN $                                                   ; If MAP_ON is SET, overplot lat/lon and continents
   GLOBAL_MAP, /OVERPLOT, $
+    LONGITUDE  = longitude, $
     MAPLIMIT   = maplimit,   $
     MAP_COLOR  = map_color,  $
     GRID_COLOR = grid_color, $
+    POSITION   = position, $
     _EXTRA     = extra.ToStruct()
 
 ;=== Determine if BOX_AXES or LABEL_AXES is set

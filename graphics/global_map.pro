@@ -81,6 +81,8 @@ IF extra.HasKey('CONTINENTS') EQ 0 THEN extra['CONTINENTS'] = 1							; If 'CONT
 IF extra.HasKey('LATDEL')     EQ 0 THEN extra['LATDEL']     = 15.0
 IF extra.HasKey('LONDEL')     EQ 0 THEN extra['LONDEL']     = 30.0
 
+IF KEYWORD_SET(label_axes) THEN extra['NOBORDER'] = 1
+
 charsize = extra.HasKey('CHARSIZE') ? extra['CHARSIZE'] : 1.0
 
 ;=== Filter out keywords that my cause duplicate keyword errors.
@@ -142,14 +144,12 @@ ENDIF ELSE BEGIN
        COLOR   = map_color, $
 			 _EXTRA  = extra.ToStruct()
     IF KEYWORD_SET(label_axes) THEN BEGIN
-      AXIS, xAxis=0, xRANGE=maplimit[1:*:2], xTickInterval=extra.LONDEL, $
-        xSTYLE=1, xTickLen=-1*!Y_CH_SIZE/2, CHARSIZE = charsize, COLOR=0, _EXTRA = extra.ToStruct()
-      AXIS, xAxis=1, xRANGE=maplimit[1:*:2], xTickInterval=extra.LONDEL, $
-        xSTYLE=1, xTickLen=-1*!Y_CH_SIZE/2, CHARSIZE = charsize, COLOR=0, xTickFormat="(A1)"
-      AXIS, yAxis=0, yRANGE=maplimit[0:*:2], yTickInterval=extra.LATDEL, $
-        ySTYLE=1, yTickLen=-1*!X_CH_SIZE, CHARSIZE = charsize, COLOR=0, _EXTRA = extra.ToStruct()
-      AXIS, yAxis=1, yRANGE=maplimit[0:*:2], yTickInterval=extra.LATDEL, $
-        ySTYLE=1, yTickLen=-1*!X_CH_SIZE, CHARSIZE = charsize, COLOR=0, yTickFormat="(A1)"
+      KW_MAP_GRID, /LABEL, color = grid_color, _EXTRA = extra.ToStruct()
+      ;MAP_GRID, LABEL=1, COLOR = grid_color, _EXTRA = extra.ToStruct(), $       ; plot the grid
+      ;  LATALIGN  = 1.2, $
+      ;  LATLAB    = xy[0,0] + longitude, $
+      ;  LONLAB    = xy[1,0] - 1.5*dy, $
+      ;  CLIP_TEXT = 0
     ENDIF ELSE $
      MAP_GRID, /LABEL, COLOR = grid_color, _EXTRA = extra.ToStruct()
   ENDELSE
