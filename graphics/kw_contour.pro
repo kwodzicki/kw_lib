@@ -237,7 +237,7 @@ IF (N_ELEMENTS(rgb_colors) EQ 0) THEN BEGIN                                     
     LOADNCLCT, color_table[0], color_table[1], NCOLORS=nLevels, BOTTOM=bottom, $      ; Load the color table silently
 	  	RGB_TABLE = rgb_colors, /SILENT $
   ELSE $
-	  LOADCT, color_table, NCOLORS = nLevels, BOTTOM=bottom, FILE = ct_File, $      ; Load the color table silently
+	  KWLOADCT, color_table, NCOLORS = nLevels, BOTTOM=bottom, FILE = ct_File, $      ; Load the color table silently
 	  	RGB_TABLE = rgb_colors, /SILENT
   IF KEYWORD_SET(ctReverse) THEN rgb_colors = REVERSE(rgb_colors, 1)
 	IF (N_ELEMENTS(oob_low_col) NE 0) AND OOB_LOW EQ 1 THEN $                     ; IF the user specified an OOB_LOW color
@@ -379,7 +379,7 @@ IF (N_ELEMENTS(cbPos) EQ 0) THEN BEGIN                                          
   xChar = !X_CH_SIZE * charsize
   yChar = !Y_CH_SIZE * charsize
   IF KEYWORD_SET(cbVertical) THEN BEGIN                                         ;If vertical color bar
-    off1 = (axes GT 0) ? 3.0*xChar : 0.9*xChar
+    off1 = extra.HasKey('BOX_AXES') ? 3.0*xChar : 0.9*xChar
     off2 = off1 + xChar*0.75
     cbPos= [position[1], position[2]+off1, $                                    ;Set default position vertical color bar
             position[3], position[2]+off2]

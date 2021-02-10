@@ -25,6 +25,6 @@ IF ISA(tableIn, 'STRING') THEN BEGIN
 ENDIF ELSE $
   index = tableIn
 
-LOADCT, index, FILE=file, RGB_TABLE = rgb_table, _EXTRA = extra
+KWLOADCT, index, FILE=file, RGB_TABLE = rgb_table, _EXTRA = extra
 
 END

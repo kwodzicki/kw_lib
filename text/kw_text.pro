@@ -1,8 +1,9 @@
 PRO KW_TEXT, x, y, text, $
-  DATA       = data, $
-  NORMAL     = normal, $
+  DATA       = data,       $
+  NORMAL     = normal,     $
   BACKGROUND = background, $
-  ALIGNMENT  = alignment, $
+  ALIGNMENT  = alignment,  $
+  CHARSIZE   = charsize,   $
   _EXTRA     = extra
 ;+
 ; Name:
@@ -29,22 +30,31 @@ PRO KW_TEXT, x, y, text, $
 ;-
 COMPILE_OPT IDL2
 
-IF N_ELEMENTS(background) EQ 0 THEN background = !P.BACKGROUND
+IF N_ELEMENTS(background) EQ 0 THEN background = !P.BACKGROUND                ; Set default background color
+IF N_ELEMENTS(alignment)  EQ 0 THEN alignment  = 0.0                          ; Set default alignment
+IF N_ELEMENTS(charsize)   EQ 0 THEN charsize   = 1.0
+  
+xy = KEYWORD_SET(data) ? CONVERT_COORD(x, y, /DATA, /TO_NORMAL) : [x, y]      ; If x/y are in data coordinates, convert to normal, else assume normal
 
-IF KEYWORD_SET(data) THEN $
-  xy = CONVERT_COORD(x, y, /DATA, /TO_NORMAL) $
-ELSE $
-  xy = [x, y]
+y_ch  = !D.y_CH_SIZE / FLOAT(!D.Y_VSIZE)                                      ; Compute height of text
+;xy[1] = xy[1] - y_ch / 10.0                                                   ; Offset bottom of 
+XYOUTS, xy[0], xy[1], text, /NORMAL, $                                        ; Run XYOUTS to get the x-width of the text
+  CHARSIZE  = charsize, $
+  ALIGNMENT = alignment, $
+  WIDTH     = lx, $
+  _EXTRA    = extra
+  
+ox    = -alignment * lx                                                       ; Set x offset based on alignment
+nx    = lx + ox                                                               ; Set x width based on alignment
 
-x_ch  = !D.X_CH_SIZE / FLOAT(!D.X_VSIZE)
-y_ch  = !D.y_CH_SIZE / FLOAT(!D.Y_VSIZE)
-xy[1] = xy[1] - y_ch / 10.0
-nx    = STRLEN(text) * x_ch
+;xx = [xy[0], xy[0] + nx, xy[0] + nx,   xy[0]]
+xx = [xy[0], xy[0], xy[0], xy[0]] + [ ox,  nx,   nx,   ox]                    ; Build x-values for background box
+yy = [xy[1], xy[1], xy[1], xy[1]] + [0.0, 0.0, y_ch, y_ch]                    ; Build y-values for background box
 
-xx = [xy[0], xy[0] + nx, xy[0] + nx,   xy[0]]
-yy = [xy[1], xy[1],      xy[1] + y_ch,  xy[1] + y_ch]
-
-POLYFILL, xx, yy, COLOR = background, /NORMAL
-XYOUTS, xy[0], xy[1], text, ALIGNMENT  = alignment, /NORMAL, _EXTRA = extra
+POLYFILL, xx, yy, COLOR = background, /NORMAL                                 ; Draw background box
+XYOUTS, xy[0], xy[1], text, /NORMAL, $                                        ; Write text 
+  CHARSIZE  = charsize,  $
+  ALIGNMENT = alignment, $
+  _EXTRA    = extra
 
 END
