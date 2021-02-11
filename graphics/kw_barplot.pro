@@ -1,75 +1,60 @@
-FUNCTION KW_BARPLOT, loc, values, $
-  STACK_COLORS = stack_colors, $
-  LEGEND       = legend, $
-  _EXTRA = extra
+PRO KW_BARPLOT, values, $
+  NBARS     = nbars, $
+  INDEX     = index, $
+  NAMES     = names, $
+  COLOR     = color, $
+  yMAX      = ymax,  $
+  OVERPLOT  = overplot, $
+  _EXTRA    = extra
 ;+
 ; Name:
-;   KW_BARPLOT
+;   KW_BAR_PLOT
 ; Purpose:
-;   A function to extend a the barplot function.
+;   A wrapper for the IDL BAR_PLOT procedure.
+; Inputs:
+;   Values : An array of values to plot bars for
+; Outputs:
+;   A Bar plot
 ; Keywords:
-;   STACK_COLORS : Colors corresponding to stacked data, i.e., second dimension
-;                   of values. Can be strings or 3 x n array of RGB values
-;   LEGEND       : Set to named variable to return legend to
+;   NBARS   : Total number of side-by-side bars to plot
+;   INDEX   : Index of the side-by-side bars to plot
+;   NAMES   : Names of the bars.
 ; Author and History:
-;   Kyle R. Wodzicki
+;   Kyle R. Wodzicki     Created 23 Oct. 2017
 ;-
-
 COMPILE_OPT IDL2
-IF N_PARAMS() EQ 0 THEN MESSAGE, 'Incorrect number of inputs!'
 
-IF N_ELEMENTS(values) EQ 0 THEN BEGIN
-  values = loc;
-  dims   = SIZE(values, /DIMENSIONS)
-  loc    = LINDGEN(dims[0])
-ENDIF ELSE $
-  dims = SIZE(values, /DIMENSIONS)
-IF N_ELEMENTS(dims) GT 3 THEN MESSAGE, 'Input data has too many dimensions!' 
+n = N_ELEMENTS(values)
+x = INDGEN(n+2)
 
-IF N_ELEMENTS(stack_colors) EQ 0 THEN BEGIN
-  LOADCT, 34, NCOLORS=dims[1], RGB = colors
-  colors = TRANSPOSE(colors)
-ENDIF ELSE IF SIZE(stack_colors[0], /TYPE) EQ 7 THEN BEGIN
-  colorSTR = TAG_NAMES(!COLOR)
-  colors = LIST();
-  FOR i = 0, N_ELEMENTS(stack_colors)-1 DO BEGIN
-    id = WHERE(STRMATCH(colorSTR, stack_colors[i], /FOLD_CASE), CNT)
-    IF CNT EQ 1 THEN $
-      colors.ADD, !COLOR.(id[0]) $
-    ELSE BEGIN
-      MESSAGE, 'Color: '+stack_colors[i]+' NOT found! Using black!', /CONTINUE
-      colors.ADD, [0,0,0];
-    ENDELSE
-  ENDFOR
-  colors = colors.ToArray(/No_Copy, DIMENSIONS=2)
-ENDIF
+yMax     = N_ELEMENTS(ymax) EQ 1 ? ymax : MAX(values);
+nbars    = N_ELEMENTS(nbars) EQ 1 ? nbars : 1
+index    = N_ELEMENTS(index) EQ 1 ? index : 0
+names    = N_ELEMENTS(names) EQ n ? [' ', names, ' '] : !NULL
 
-main = BARPLOT(loc, values[*,0,0], /NoData, yRange = [0, MAX(values)], $
-  _EXTRA = extra)
-legend = LEGEND(target = main)
-
-IF N_ELEMENTS(dims) EQ 3 THEN BEGIN
-  FOR k = 0, dims[-1]-1 DO $                                                    ; Iterate over values that are to be placed next to each other
-    FOR j = 0, dims[-2]-1 DO BEGIN
-      IF j GT 0 THEN old_tmp = tmp
-      tmp = values[*,j,k]
-      b = BARPLOT( loc, tmp, $
-        INDEX         = k, $
-        NBARS         = dims[-1], $
-        BOTTOM_VALUES = (j GT 0) ? old_tmp : !NULL, $
-        FILL_COLOR    = colors[j], $
-        /OVERPLOT)
-      WAIT, 2
-      legend.ADD, target = b
-    ENDFOR
-ENDIF ELSE IF N_ELEMENTS(dims) EQ 2 THEN BEGIN
-  PRINT, 'Not coded yet!'
+barWidth = 0.4 / nbars
+loc = -(nbars-1) + INDGEN(nbars)*2
+newIndex = loc[index]
 
 
-ENDIF ELSE BEGIN
-  PRINT, 'Not coded yet!'
+IF NOT KEYWORD_SET(overplot) THEN $
+	PLOT, [0,1], /NoData, $
+		yRange    = [0, yMax], $
+		yStyle    = 1, $
+		xRange    = [MIN(x), MAX(x)], $
+		xStyle    = 1, $
+		xTickV    = x, $
+		xTicks    = n+1, $
+		xTickName = names
 
-ENDELSE
+FOR i = 0, n-1 DO BEGIN
+  barx  = x[i+1] + [-barWidth, -barWidth, barWidth, barWidth]
+  barx += newIndex * barWidth
+  POLYFILL, barx, [0, values[i], values[i], 0], COLOR = color, $
+    _EXTRA = extra
+ENDFOR
+  
 
-RETURN, main
+
+
 END

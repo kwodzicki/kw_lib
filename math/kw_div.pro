@@ -39,8 +39,8 @@ ENDELSE
 lon0 = SHIFT(lon_2D, -1, 0) & lon1 = SHIFT(lon_2D, 1,  0)
 lat0 = SHIFT(lat_2D,  0, 1) & lat1 = SHIFT(lat_2D, 0, -1)
 
-d_x = KWMAP_2POINTS(lon0, lat_2D, lon1, lat_2D, /METERS)              ;Change in distance over x
-d_y = KWMAP_2POINTS(lon_2D, lat0, lon_2D, lat1, /METERS)              ;Change in distance over y
+d_x = KW_MAP_2POINTS(lon0, lat_2D, lon1, lat_2D, /METERS)              ;Change in distance over x
+d_y = KW_MAP_2POINTS(lon_2D, lat0, lon_2D, lat1, /METERS)              ;Change in distance over y
 
 dims  = SIZE(u, /DIMENSIONS)                                          ;Get the dimensions of u
 nDims = N_ELEMENTS(dims)                                              ;Get number of dimensions of u

@@ -1,4 +1,4 @@
-PRO KWLOADCT, table_number, $
+PRO KW_LOADCT, table_number, $
   SILENT    = silent, $
   GET_NAMES = names, $
   FILE      = file, $

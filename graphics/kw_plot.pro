@@ -1,4 +1,4 @@
-PRO kwPLOT, x, y, $
+PRO kw_PLOT, x, y, $
 	xStyle     = xStyle,     $
 	xTickUnits = xTickUnits, $
   xGridStyle = xGridStyle, $

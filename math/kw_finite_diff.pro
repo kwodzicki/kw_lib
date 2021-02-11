@@ -27,7 +27,7 @@ FUNCTION KW_FINITE_DIFF, z_in, x_in, y_in, $
 ; Dependencies:
 ;   FINITE_DIFF_COEFFICIENT : This function simply returns coefficients for
 ;     finite differencing.
-;   KWMAP_2POINTS : This function is identical to the standard IDL function
+;   KW_MAP_2POINTS : This function is identical to the standard IDL function
 ;     MAP_2POINTS, however, it allows arrays to be input.
 ; Note:
 ;   All calculations are performed using double precision, however, data will
@@ -83,10 +83,10 @@ new_y[nCo,0]      = REVERSE(SHIFT(y[*,1:nCo],       sp),2)
 new_y[nCo,-1*nCo] = REVERSE(SHIFT(y[*,-1*nCo-1:-2], sp),2)
 y = TEMPORARY(new_y)
 
-;=== Compute x and y spacing. Use KWMAP_2POINTS if LAT_LON is set
+;=== Compute x and y spacing. Use KW_MAP_2POINTS if LAT_LON is set
 IF KEYWORD_SET(lat_lon) THEN BEGIN
-  dx = KWMAP_2POINTS(x, y, SHIFT(x, [1,0]), y, /KILOMETERS)                     ; Distance, in kilometers, between grid points in longitude
- 	dy = KWMAP_2POINTS(x, y, x, SHIFT(y, [0,1]), /KILOMETERS)                     ; Distance, in kilometers, between grid points in latitude
+  dx = KW_MAP_2POINTS(x, y, SHIFT(x, [1,0]), y, /KILOMETERS)                     ; Distance, in kilometers, between grid points in longitude
+ 	dy = KW_MAP_2POINTS(x, y, x, SHIFT(y, [0,1]), /KILOMETERS)                     ; Distance, in kilometers, between grid points in latitude
 ENDIF ELSE BEGIN
   dx = SHIFT(x, [1, 0]) - x                                                    ; Distance, between points in x direction
   dy = SHIFT(y, [0, 1]) - y                                                    ; Distance, between points in y direction

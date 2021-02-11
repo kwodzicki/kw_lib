@@ -237,7 +237,7 @@ IF (N_ELEMENTS(rgb_colors) EQ 0) THEN BEGIN                                     
     LOADNCLCT, color_table[0], color_table[1], NCOLORS=nLevels, BOTTOM=bottom, $      ; Load the color table silently
 	  	RGB_TABLE = rgb_colors, /SILENT $
   ELSE $
-	  KWLOADCT, color_table, NCOLORS = nLevels, BOTTOM=bottom, FILE = ct_File, $      ; Load the color table silently
+	  KW_LOADCT, color_table, NCOLORS = nLevels, BOTTOM=bottom, FILE = ct_File, $      ; Load the color table silently
 	  	RGB_TABLE = rgb_colors, /SILENT
   IF KEYWORD_SET(ctReverse) THEN rgb_colors = REVERSE(rgb_colors, 1)
 	IF (N_ELEMENTS(oob_low_col) NE 0) AND OOB_LOW EQ 1 THEN $                     ; IF the user specified an OOB_LOW color

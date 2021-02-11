@@ -27,8 +27,8 @@ ENDELSE
 x0 = SHIFT(x_2D, -1, 0) & x1 = SHIFT(x_2D, 1,  0)
 y0 = SHIFT(y_2D,  0, 1) & y1 = SHIFT(y_2D, 0, -1)
 
-d_x = KWMAP_2POINTS(x0, y_2D, x1, y_2D, /METERS)									;Change in distance over x
-d_y = KWMAP_2POINTS(x_2D, y0, x_2D, y1, /METERS)									;Change in distance over y
+d_x = KW_MAP_2POINTS(x0, y_2D, x1, y_2D, /METERS)									;Change in distance over x
+d_y = KW_MAP_2POINTS(x_2D, y0, x_2D, y1, /METERS)									;Change in distance over y
 
 grad_x = (SHIFT(in_array, -1, 0) - SHIFT(in_array, 1,  0)) / d_x	
 grad_x = (SHIFT(grad_x,   -1, 0) - SHIFT(grad_x,   1,  0)) / d_x

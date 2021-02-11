@@ -44,11 +44,11 @@ IF (MEAN(SIZE(u, /DIMENSIONS) EQ SIZE(v, /DIMENSIONS)) NE 1) THEN $   ;If not th
 
 ;Convert input longitude and latitude to 2-D arrays
 dims = [N_ELEMENTS(lon), N_ELEMENTS(lat)]
-dy   = REBIN(KWMAP_2POINTS(INTARR(dims[1]-1), lat[0:-2], INTARR(dims[1]-1), lat[1:*], /METERS), dims)
+dy   = REBIN(KW_MAP_2POINTS(INTARR(dims[1]-1), lat[0:-2], INTARR(dims[1]-1), lat[1:*], /METERS), dims)
 dx = []
 FOR i = 0, dims[1]-1 DO BEGIN & $
   tmp_lat = REPLICATE(lat[i], dims[0]) & $
-  dx = [[dx], [KWMAP_2POINTS(lon, tmp_lat, SHIFT(lon, 1), tmp_lat, /METERS)]] & $
+  dx = [[dx], [KW_MAP_2POINTS(lon, tmp_lat, SHIFT(lon, 1), tmp_lat, /METERS)]] & $
 ENDFOR
 
 dims   = SIZE(u, /DIMENSIONS)                                          ;Get the dimensions of u

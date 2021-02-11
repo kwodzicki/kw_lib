@@ -33,8 +33,8 @@ FUNCTION GEOSTROPHIC_WIND, geo, x, y, z
   x0 = SHIFT(x_2D, -1, 0) & x1 = SHIFT(x_2D, 1,  0)                   ;Shift x values west and east
   y0 = SHIFT(y_2D,  0, 1) & y1 = SHIFT(y_2D, 0, -1)                   ;Shift y values south and north
 
-  dx = KWMAP_2POINTS(x0,   y_2D,   x1, y_2D, /METERS)                 ;Change in x in meters
-  dy = KWMAP_2POINTS(x_2D,   y0, x_2D,   y1, /METERS)                 ;Change in y in meters
+  dx = KW_MAP_2POINTS(x0,   y_2D,   x1, y_2D, /METERS)                 ;Change in x in meters
+  dy = KW_MAP_2POINTS(x_2D,   y0, x_2D,   y1, /METERS)                 ;Change in y in meters
 
   dims = SIZE(geo, /DIMENSIONS)                                       ;Get size of geopotential
   CASE N_ELEMENTS(dims) OF                                            ;Define arrays for shifting values
