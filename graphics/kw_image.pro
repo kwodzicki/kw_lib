@@ -62,45 +62,38 @@ y_info = SIZE(y)
 IF dims[1] GT x_info[1]         THEN dims[1] = x_info[1]
 IF dims[2] GT y_info[y_info[0]] THEN dims[2] = y_info[y_info[0]]
 IF KEYWORD_SET(map) THEN BEGIN
-;	IF x_info[0] EQ 1 THEN BEGIN
-;		xx = INTERPOL(FINDGEN(x_info[1]), x, INDGEN(x_info[1]+1)-0.5)
-;		yy = INTERPOL(FINDGEN(y_info[1]), y, INDGEN(y_info[1]+1)-0.5)
-;		xx = REBIN(xx, x_info[1]+1, y_info[1]+1)
-;		yy = REBIN(REFORM(yy, 1, y_info[1]+1), x_info[1]+1, y_info[1]+1)
-;	ENDIF ELSE BEGIN
-;		xInt = INDGEN(x_info[1]+1)-0.5
-;		yInt = INDGEN(y_info[2]+1)-0.5
-;		xx   = INTERPOLATE(x, xInt, yInt, /GRID)
-;		yy   = INTERPOLATE(y, xInt, yInt, /GRID)
-;	ENDELSE
   IF x_info[0] EQ 1 THEN BEGIN
     x = REBIN(x, x_info[1], y_info[1])
     y = REBIN(REFORM(y, 1, y_info[1]), x_info[1], y_info[1])
   ENDIF
-  xInt = FINDGEN(dims[1]+1)-0.5
-  yInt = FINDGEN(dims[2]+1)-0.5
-  xx   = INTERPOLATE(x, xInt, yInt, /GRID)
-  yy   = INTERPOLATE(y, xInt, yInt, /GRID)
 
-;  FOR j = 0, dims[2]-1 DO $
-;    FOR i = 0, dims[1]-1 DO $
-;      IF FINITE(xx[i,j]) AND FINITE(FINITE(yy[i,j]) THEN $
-;     	POLYFILL, $
-;     	  [ xx[i,j], xx[i,j+1], xx[i+1,j+1], xx[i+1,j], xx[i,j] ], $
-;     	  [ yy[i,j], yy[i,j+1], yy[i+1,j+1], yy[i+1,j], yy[i,j] ], $
-;     	  COLOR = tmp[i, j], /DATA, CLIP = clip, NOCLIP = 0
+  xInt  = FINDGEN(dims[1]+1)-0.5                                              ; X indices to interpolate to for box edges
+  yInt  = FINDGEN(dims[2]+1)-0.5                                              ; Y indices to interpolate to for box edges
+  xx360 = x                                                                   ; X values in 0 - 360 range
+  xx180 = x                                                                   ; X values in -180 - 180 range
+  IF MAX(x, /NaN) GT 180.0 THEN BEGIN                                         ; If max of x is greater than 180
+    id = WHERE(x GT 180.0, cnt)                                               ; Then data was in 0 - 360 range so find where over 180
+    IF cnt GT 0 THEN xx180[id] -= 360.0                                       ; Fix -180 - 180 range data
+  ENDIF ELSE BEGIN                                                            ; Else, in -180 to 180 range data
+    id = WHERE(x LT 0.0, cnt)                                                 ; So find where < 0.0
+    IF cnt GT 0 THEN xx360[id] += 360.0                                       ; Fix 0 - 360 range data
+  ENDELSE
+ 
+  xx180 = INTERPOLATE(xx180, xInt, yInt, /GRID)                               ; Interpolate the -180 - 180 x-values for box edges
+  xx360 = INTERPOLATE(xx360, xInt, yInt, /GRID)                               ; Interpolate the 0 - 360 x-values for box edges
+  yy    = INTERPOLATE(y,     xInt, yInt, /GRID)                               ; Interpolate y-values for box edges
+
   FOR j = 0, dims[2]-1 DO $
     FOR i = 0, dims[1]-1 DO BEGIN
-      xVals = [ xx[i,j], xx[i,j+1], xx[i+1,j+1], xx[i+1,j], xx[i,j] ]
-      yVals = [ yy[i,j], yy[i,j+1], yy[i+1,j+1], yy[i+1,j], yy[i,j] ]
+      IF (x[i,j] GE -20) AND (x[i,j] LE 20) THEN $                            ; If x-value is somewhat near the prime meridian
+        xVals = [ xx180[i,j], xx180[i,j+1], xx180[i+1,j+1], xx180[i+1,j], xx180[i,j] ] $ ; Use -180 - 180 range
+      ELSE $                                                                  ; Else
+        xVals = [ xx360[i,j], xx360[i,j+1], xx360[i+1,j+1], xx360[i+1,j], xx360[i,j] ] ; use 0 - 360 range 
+      yVals  = [ yy[i,j], yy[i,j+1], yy[i+1,j+1], yy[i+1,j], yy[i,j] ]
+
       IF TOTAL(FINITE(xVals), /INT) EQ 5 AND TOTAL(FINITE(yVals), /INT) EQ 5 THEN $
      	POLYFILL, xVals, yVals, COLOR = tmp[i, j], /DATA, CLIP = clip, NOCLIP = 0
 
-;      IF TOTAL(FINITE(xVals), /INT) EQ 5 AND TOTAL(FINITE(yVals), /INT) EQ 5 THEN BEGIN
-;        PRINT, xVals, yVals
-;     	POLYFILL, xVals, yVals, COLOR = tmp[i, j], /DATA, CLIP = clip, NOCLIP = 0
-;;     	STOP
-;     ENDIF
     ENDFOR
 
 ENDIF ELSE BEGIN
